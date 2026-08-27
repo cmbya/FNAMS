@@ -13,11 +13,5 @@ convert "${ROOT_DIR}/assets/hermes-agent.svg" -resize 64x64 "$STAGE/app/ui/image
 convert "${ROOT_DIR}/assets/hermes-agent.svg" -resize 256x256 "$STAGE/ICON_256.PNG"
 convert "${ROOT_DIR}/assets/hermes-agent.svg" -resize 64x64 "$STAGE/ICON.PNG"
 chmod 0755 "$STAGE"/cmd/* "$STAGE"/app/bin/*
-FNPACK=${FNPACK:-}
-if [ -z "$FNPACK" ]; then FNPACK=$(command -v fnpack || true); fi
-test -n "$FNPACK" || { echo 'fnpack is required.' >&2; exit 1; }
-rm -f "$STAGE"/*.fpk
-(cd "$STAGE" && "$FNPACK" build --directory "$STAGE")
-fpk=$(find "$STAGE" -maxdepth 1 -type f -name '*.fpk' -print -quit)
-test -n "$fpk"
-mv "$fpk" "${ROOT_DIR}/dist/HermesAgent-${FPK_VERSION}-fnOS-x86_64.fpk"
+"${ROOT_DIR}/scripts/package-fpk.sh" \
+  "$STAGE" "${ROOT_DIR}/dist/HermesAgent-${FPK_VERSION}-fnOS-x86_64.fpk"

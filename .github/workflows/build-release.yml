@@ -30,18 +30,11 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl jq zstd patchelf imagemagick unzip xz-utils
+          sudo apt-get install -y curl jq zstd patchelf imagemagick unzip xz-utils busybox-static
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
-      - name: Install fnpack
-        run: |
-          mkdir -p "$RUNNER_TEMP/tools"
-          curl --fail --location --retry 3 --output "$RUNNER_TEMP/tools/fnpack" \
-            "${FNPACK_URL:-https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64}"
-          chmod 0755 "$RUNNER_TEMP/tools/fnpack"
-          echo "FNPACK=$RUNNER_TEMP/tools/fnpack" >> "$GITHUB_ENV"
       - name: Run static checks
         run: ./tests/static.sh
       - name: Build both FPKs
