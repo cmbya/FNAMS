@@ -27,6 +27,8 @@ GitHub Actions 的每日构建和手动构建默认需要在仓库 Variables 中
 - 仅保留 Hermes Agent；不集成 Claude Code、Codex、Pi 或语音功能。
 - 优先使用 fnOS 应用中心 Chrome；不可用时使用 FPK 内置 Chromium。
 
+启动时如果在应用配置中填写了 fnOS 应用中心 Chrome 的精确可执行文件路径 `CHROME_BIN`，会优先使用该 Chrome；路径为空、不可执行或未提供 CDP 时使用 FPK 内置 Chromium。不会把所有应用目录加入 PATH，避免其他应用覆盖运行时命令。
+
 ## 目录
 
 ```text
