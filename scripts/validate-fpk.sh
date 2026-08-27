@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-for file in "$ROOT_DIR"/apps/*/manifest "$ROOT_DIR"/apps/*/config/*.json; do
+for file in "$ROOT_DIR"/apps/*/manifest "$ROOT_DIR"/apps/*/config/*; do
   test -f "$file"
-  case "$file" in *.json) jq empty "$file";; esac
+  case "$(basename "$file")" in privilege|resource) jq empty "$file";; esac
 done
 while IFS= read -r file; do bash -n "$file"; done < <(find "$ROOT_DIR/apps" "$ROOT_DIR/scripts" -type f -perm -u+x -print)
 for fpk in "$ROOT_DIR"/dist/*.fpk; do
@@ -11,4 +11,3 @@ for fpk in "$ROOT_DIR"/dist/*.fpk; do
   tar -tf "$fpk" >/dev/null
 done
 echo 'Static FPK validation passed.'
-
