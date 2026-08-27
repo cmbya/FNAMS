@@ -35,6 +35,9 @@ for fpk in "${ROOT_DIR}"/dist/*.fpk; do
   fi
   duplicate=$(printf '%s\n' "$app_listing" | sort | uniq -d | head -n 1 || true)
   test -z "$duplicate" || { echo "duplicate app.tgz member: $duplicate" | tee -a "$CHECK_LOG" >&2; exit 1; }
+  bootstrap_root="$tmp/bootstrap"
+  mkdir -p "$bootstrap_root"
+  tar -xzf "$app_tgz" -C "$bootstrap_root" --no-same-owner
   checksum=$(awk -F= '$1 ~ /^[[:space:]]*checksum[[:space:]]*$/ {gsub(/[[:space:]]/, "", $2); print $2; exit}' "$tmp/manifest")
   actual_checksum=$(md5sum "$app_tgz" | awk '{print $1}')
   test -n "$checksum" || { echo "manifest checksum is missing" | tee -a "$CHECK_LOG" >&2; exit 1; }
