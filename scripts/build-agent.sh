@@ -27,7 +27,7 @@ done
   --output-file "${ROOT_DIR}/build/hermes-requirements.txt"
 "${UV_BIN}" pip install --python "${RUNTIME_DIR}/bin/python3" --prefix "${RUNTIME_DIR}" \
   --no-deps --requirement "${ROOT_DIR}/build/hermes-requirements.txt"
-"${UV_BIN}" pip install --python "${RUNTIME_DIR}/bin/python3" --prefix "${RUNTIME_DIR}" \
+HERMES_NIX_BUILD=1 "${UV_BIN}" pip install --python "${RUNTIME_DIR}/bin/python3" --prefix "${RUNTIME_DIR}" \
   --no-deps "${SRC_DIR}"
 ln -sf python3 "${RUNTIME_DIR}/bin/python"
 cp -a "${SRC_DIR}/." "${AGENT_DIR}/"
