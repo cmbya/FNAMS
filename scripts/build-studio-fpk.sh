@@ -10,6 +10,8 @@ cp -a "${ROOT_DIR}/build/studio-runtime-tree/app/." "$STAGE/app/"
 install -d "$STAGE/app/ui/images"
 convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 256x256 "$STAGE/app/ui/images/icon_256.png"
 convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 64x64 "$STAGE/app/ui/images/icon_64.png"
+convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 256x256 "$STAGE/ICON_256.PNG"
+convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 64x64 "$STAGE/ICON.PNG"
 chmod 0755 "$STAGE"/cmd/*
 FNPACK=${FNPACK:-}
 if [ -z "$FNPACK" ]; then FNPACK=$(command -v fnpack || true); fi
