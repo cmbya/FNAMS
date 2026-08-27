@@ -13,5 +13,6 @@ convert "${ROOT_DIR}/assets/hermes-agent.svg" -resize 64x64 "$STAGE/app/ui/image
 convert "${ROOT_DIR}/assets/hermes-agent.svg" -resize 256x256 "$STAGE/ICON_256.PNG"
 convert "${ROOT_DIR}/assets/hermes-agent.svg" -resize 64x64 "$STAGE/ICON.PNG"
 chmod 0755 "$STAGE"/cmd/* "$STAGE"/app/bin/*
+"${ROOT_DIR}/scripts/compact-agent-runtime.sh" "$STAGE/app" "$FPK_VERSION"
 "${ROOT_DIR}/scripts/package-fpk.sh" \
   "$STAGE" "${ROOT_DIR}/dist/HermesAgent-${FPK_VERSION}-fnOS-x86_64.fpk"

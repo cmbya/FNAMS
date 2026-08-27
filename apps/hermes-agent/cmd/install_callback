@@ -3,7 +3,48 @@ set -eu
 
 mkdir -p "${TRIM_PKGETC}" "${TRIM_PKGVAR}/logs"
 install_log=${TRIM_PKGVAR}/logs/install.log
-printf '%s [Hermes Agent] install_callback started\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"$install_log"
+log_msg() {
+  printf '%s [Hermes Agent] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$*" >>"$install_log"
+}
+
+fail_install() {
+  log_msg "ERROR: $*"
+  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+    printf '%s\n' "Hermes Agent installation failed: $* (see ${install_log})" >>"${TRIM_TEMP_LOGFILE}" 2>/dev/null || true
+  fi
+  exit 1
+}
+
+app_root=${TRIM_APPDEST:?TRIM_APPDEST is required}/app
+payload=${app_root}/runtime-payload.tgz
+busybox=${app_root}/tools/busybox
+log_msg "install_callback started"
+
+# This payload is deliberately a single file in app.tgz. It avoids fnOS
+# extracting the full Python/Chromium tree itself, while keeping it offline.
+if [ -f "$payload" ]; then
+  [ -x "$busybox" ] || fail_install "bundled runtime extractor is missing"
+  log_msg "expanding bundled runtime payload"
+  "$busybox" tar -xzf "$payload" -C "$app_root" >>"$install_log" 2>&1 || \
+    fail_install "unable to expand bundled runtime payload"
+  [ -x "${app_root}/runtime/python/bin/python3" ] || \
+    fail_install "runtime Python was not extracted"
+  [ -x "${app_root}/bin/hermes-fnos" ] || \
+    fail_install "Hermes Agent launcher was not extracted"
+  rm -f "$payload"
+  log_msg "bundled runtime payload expanded successfully"
+else
+  [ -x "${app_root}/runtime/python/bin/python3" ] || \
+    fail_install "runtime payload is missing and no installed runtime was found"
+  log_msg "runtime payload already expanded"
+fi
+
+# Keep the user's configured directories during an upgrade.
+if [ -f "${TRIM_PKGETC}/app.env" ]; then
+  log_msg "keeping existing configuration"
+  exit 0
+fi
+
 home=/var/apps/HermesAgent/share/data
 if [ -n "${TRIM_DATA_SHARE_PATHS:-}" ]; then
   candidate=${TRIM_DATA_SHARE_PATHS%%:*}
@@ -20,4 +61,4 @@ umask 077
   printf 'HERMES_GATEWAY_PORT=8642\n'
 } >"${TRIM_PKGETC}/app.env"
 mkdir -p "$home"
-printf '%s [Hermes Agent] configured home=%s workspace=%s gateway_port=8642\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$home" "${workspace:-<not-set>}" >>"$install_log"
+log_msg "configured home=${home} workspace=${workspace:-<not-set>} gateway_port=8642"

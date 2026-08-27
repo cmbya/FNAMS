@@ -1,5 +1,5 @@
 appname=HermesAgent
-version=0.1.2
+version=0.1.3
 desc=Hermes Agent background gateway for fnOS
 display_name=Hermes Agent
 maintainer=cmbya
@@ -17,4 +17,4 @@ ctl_upgrade=true
 ctl_config=true
 disable_authorization_path=false
 check_update=false
-changelog=修复 app.tgz 解压兼容性并增加日志查看、日志导出和 FPK 安装校验
+changelog=采用小型 app.tgz 安装层，运行时在本地离线展开并记录安装日志
