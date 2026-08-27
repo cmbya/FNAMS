@@ -42,8 +42,8 @@ Hermes Agent 使用“小安装层”封装：fnOS 直接解压的 `app.tgz` 只
 
 - 包版本从 `0.1.0` 开始，当前安装兼容性修复版本为 `0.1.8`，由 `FPK_VERSION` 控制。
 - 上游只读取 Hermes Agent 和 Hermes Studio 的正式 Release，不使用 prerelease、branch 或未发布 commit。
-- `.github/workflows/build-release.yml` 负责构建双 FPK，并在构建通过后创建或更新对应 Release。
-- `.github/workflows/check-upstream-release.yml` 每天检查正式 Release；发现新版本时触发构建流程。
+- `.github/workflows/build-release.yml` 只接受手动触发。必须选择 `agent`、`studio` 或 `both`；默认仅构建 Agent，避免无关应用被重复打包。
+- `.github/workflows/check-upstream-release.yml` 每天检查正式 Release；发现 Agent 或 Studio 更新时，只触发对应应用的构建。仅在明确选择 `both` 时才构建双 FPK。
 
 ## 限制
 

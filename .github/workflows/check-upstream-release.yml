@@ -22,10 +22,14 @@ jobs:
           source versions.lock
           latest_agent=$(gh api repos/NousResearch/hermes-agent/releases --paginate --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name' | head -n1)
           latest_studio=$(gh api repos/EKKOLearnAI/hermes-studio/releases --paginate --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name' | head -n1)
-          if [ "$latest_agent" != "$HERMES_AGENT_TAG" ] || [ "$latest_studio" != "$HERMES_STUDIO_TAG" ]; then
-            echo "New formal Release: Agent=$latest_agent Studio=$latest_studio"
-            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" -f use_latest_releases=true
-          else
+          if [ "$latest_agent" != "$HERMES_AGENT_TAG" ]; then
+            echo "New Hermes Agent formal Release: $latest_agent"
+            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" -f target=agent -f use_latest_releases=true
+          fi
+          if [ "$latest_studio" != "$HERMES_STUDIO_TAG" ]; then
+            echo "New Hermes Studio formal Release: $latest_studio"
+            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" -f target=studio -f use_latest_releases=true
+          fi
+          if [ "$latest_agent" = "$HERMES_AGENT_TAG" ] && [ "$latest_studio" = "$HERMES_STUDIO_TAG" ]; then
             echo 'No new formal upstream Release.'
           fi
-

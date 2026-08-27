@@ -1,16 +1,17 @@
-name: Build Hermes Agent and Studio FPK
+name: Build selected Hermes fnOS FPK
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'versions.lock'
-      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
+      target:
+        description: 'Package to build and publish'
+        required: true
+        default: 'agent'
+        type: choice
+        options:
+          - agent
+          - studio
+          - both
       use_latest_releases:
         description: 'Resolve the newest formal upstream Releases'
         required: false
@@ -37,26 +38,33 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Run static checks
         run: ./tests/static.sh
-      - name: Build both FPKs
+      - name: Build selected FPK
         env:
+          BUILD_TARGET: ${{ inputs.target }}
           USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
         run: ./scripts/build-release.sh
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hermes-fnOS-${{ github.sha }}
+          name: Hermes-${{ inputs.target }}-fnOS-${{ github.sha }}
           path: dist/
       - name: Create or update Release
         run: |
           source versions.lock
           PACKAGE_VERSION="$FPK_VERSION"
-          tag="v${PACKAGE_VERSION}"
+          target="${{ inputs.target }}"
+          case "$target" in
+            agent) tag="agent-v${PACKAGE_VERSION}"; title="Hermes Agent fnOS ${PACKAGE_VERSION}"; notes="Hermes Agent 单独构建包。目标平台：fnOS 1.2 x86_64。" ;;
+            studio) tag="studio-v${PACKAGE_VERSION}"; title="Hermes Studio fnOS ${PACKAGE_VERSION}"; notes="Hermes Studio 单独构建包；需已安装 Hermes Agent。目标平台：fnOS 1.2 x86_64。" ;;
+            both) tag="v${PACKAGE_VERSION}"; title="Hermes Agent + Hermes Studio fnOS ${PACKAGE_VERSION}"; notes="Hermes Agent + Hermes Studio 双 FPK 版本。安装顺序：HermesAgent，然后 HermesStudio。目标平台：fnOS 1.2 x86_64。" ;;
+            *) echo "Unknown target: $target" >&2; exit 2 ;;
+          esac
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log --clobber --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log \
               --repo "$GITHUB_REPOSITORY" \
-              --title "Hermes Agent + Hermes Studio fnOS ${PACKAGE_VERSION}" \
-              --notes "Hermes Agent + Hermes Studio 双 FPK 版本。安装顺序：HermesAgent，然后 HermesStudio。目标平台：fnOS 1.2 x86_64。"
+              --title "$title" \
+              --notes "$notes"
           fi
           gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
