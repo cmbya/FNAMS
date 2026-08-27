@@ -1,0 +1,12 @@
+[
+  {
+    "stepTitle": "Hermes Studio",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Hermes Studio is the upstream WebUI for Hermes Agent. Install and start Hermes Agent first. The WebUI listens on LAN port 8648 and does not own the background Gateway."
+      }
+    ]
+  }
+]
+

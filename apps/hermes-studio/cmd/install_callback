@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+mkdir -p "${TRIM_PKGETC}" "${TRIM_PKGVAR}/logs"
+agent_home=/var/apps/HermesAgent/share/data
+if [ -n "${TRIM_DATA_SHARE_PATHS:-}" ]; then
+  candidate=/var/apps/HermesAgent/share/data
+  [ -d "$candidate" ] && agent_home=$candidate
+fi
+umask 077
+{
+  printf 'AGENT_HOME=%s\n' "$agent_home"
+  printf 'HERMES_GATEWAY_URL=http://127.0.0.1:8642\n'
+  printf 'HERMES_STUDIO_PORT=8648\n'
+} >"${TRIM_PKGETC}/app.env"
+

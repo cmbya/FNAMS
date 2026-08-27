@@ -1,0 +1,14 @@
+{
+  ".url": {
+    "HermesAgent.main": {
+      "title": "Hermes Agent",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "protocol": "http",
+      "port": 8642,
+      "url": "/health",
+      "allUsers": true
+    }
+  }
+}
+

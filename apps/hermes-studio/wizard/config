@@ -1,0 +1,12 @@
+[
+  {
+    "stepTitle": "Hermes Studio",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Studio connects to the Agent data share and Gateway. Configure all upstream features, including models, API keys, Skills, memory, MCP, schedules, files, terminal, browser and message platforms in the original Studio interface."
+      }
+    ]
+  }
+]
+

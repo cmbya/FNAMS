@@ -1,40 +1,42 @@
-# Hermes Studio for fnOS
+# Hermes Agent + Hermes Studio for fnOS
 
-这是面向 fnOS 1.2、x86_64 的单应用原生 FPK 工程。它把 Hermes Agent 运行时与 Hermes Studio WebUI 打进同一个应用，由 Studio 管理 Agent 网关、会话、Skills、记忆、MCP、任务和消息平台。
+这是 `fnOS 1.2 x86_64` 的双 FPK 工程：
 
-## 当前状态
+- `HermesAgent.fpk`：内置 Python、Hermes Agent、全部运行依赖、消息网关、定时任务和备用 Chromium。
+- `HermesStudio.fpk`：内置 Node 和上游 Hermes Studio WebUI，通过官方 CLI/Bridge/Gateway 接口连接 Agent。
 
-仓库当前提供 FPK 目录结构、生命周期脚本、上游 Release 锁定和 GitHub Actions 构建入口。完整 FPK 需要在 Actions 中提供已审核的 Python/Chromium 离线运行时归档，并在真实 fnOS 设备上完成安装与联调。
+两个 FPK 不修改 Hermes 上游页面和业务功能。Agent 是长期运行的后台服务，Studio 是可独立启停的管理界面；停止 Studio 或关闭浏览器不会停止 Agent 的机器人和定时任务。
 
-## 本地构建
+## 构建
+
+构建机必须是 Linux `x86_64`，且能访问 GitHub、Node.js、Python standalone、Chrome for Testing 和 fnOS `fnpack` 下载地址。
 
 ```bash
-export PYTHON_STANDALONE_ARCHIVE_URL='https://...'
-export CHROMIUM_ARCHIVE_URL='https://...'
-./scripts/build-fpk.sh
+export FPK_VERSION=0.1.0
+./scripts/build-release.sh
 ```
 
-构建脚本默认只下载锁定的正式 Release，并从上游 `uv.lock` 导出除语音相关 extras 外的完整功能依赖（含消息平台）。不会迁移 Docker 数据。所有运行时依赖进入 FPK，安装阶段不访问网络。
+所有 Python、Node、uv、Chromium 和 Hermes 依赖都在 Actions 构建阶段进入 FPK，安装到 fnOS 后不下载依赖。
 
-GitHub Actions 已锁定 Python 3.11.16 与 Chrome for Testing 152.0.7977.64 的 x86_64 离线归档；如需使用内网镜像，可在仓库 Variables 中覆盖 `PYTHON_STANDALONE_ARCHIVE_URL` 与 `CHROMIUM_ARCHIVE_URL`。这样可以避免把未经审核的第三方运行时静默带入个人 FPK。
+## 安装顺序
 
-## 运行约束
+1. 安装 `HermesAgent-0.1.0-fnOS-x86_64.fpk`。
+2. 在 Agent 配置中选择一个 fnOS 授权目录，并配置模型/API 和消息平台。
+3. 安装 `HermesStudio-0.1.0-fnOS-x86_64.fpk`。
+4. 从 fnOS 应用中心打开 Hermes Studio。
 
-- 目标架构：x86_64（fnOS manifest 使用 `platform=x86`）。
-- WebUI：局域网访问，端口 8648。
-- 数据：`$TRIM_PKGVAR`；配置：`$TRIM_PKGETC`；临时文件：`$TRIM_PKGTMP`。
-- 工作目录：安装向导选择的授权目录，默认由用户在 fnOS 安装时配置。
-- 仅保留 Hermes Agent；不集成 Claude Code、Codex、Pi 或语音功能。
-- 优先使用 fnOS 应用中心 Chrome；不可用时使用 FPK 内置 Chromium。
+Studio 依赖 Agent。若 Agent 没有安装、没有启动或共享目录权限不正确，Studio 会显示明确的修复提示。
 
-启动时如果在应用配置中填写了 fnOS 应用中心 Chrome 的精确可执行文件路径 `CHROME_BIN`，会优先使用该 Chrome；路径为空、不可执行或未提供 CDP 时使用 FPK 内置 Chromium。不会把所有应用目录加入 PATH，避免其他应用覆盖运行时命令。
+## 版本与 Release
 
-## 目录
+- 包版本从 `0.1.0` 开始，由 `FPK_VERSION` 控制。
+- 上游只读取 Hermes Agent 和 Hermes Studio 的正式 Release，不使用 prerelease、branch 或未发布 commit。
+- `.github/workflows/build-release.yml` 负责构建双 FPK，并在构建通过后创建或更新对应 Release。
+- `.github/workflows/check-upstream-release.yml` 每天检查正式 Release；发现新版本时触发构建流程。
 
-```text
-fpk/       FPK 包内容
-scripts/   上游获取、运行时打包和 FPK 构建脚本
-versions.lock
-```
+## 限制
 
-开发约束与验收标准见 [HermesStudio-fnOS-开发文档.md](./HermesStudio-fnOS-开发文档.md)。
+目标为个人家庭局域网使用，仅支持 `x86_64`。个人微信扫码和 QQ 开放平台能力必须以对应 Hermes Agent 正式 Release 原生支持的适配器为准；打包层不会伪造不存在的上游功能。
+
+详细方案见 `docs/HermesAgent-HermesStudio-fnOS-双FPK开发文档.md`。
+

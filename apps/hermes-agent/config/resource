@@ -1,0 +1,14 @@
+{
+  "data-share": {
+    "shares": [
+      {
+        "name": "HermesAgent/data",
+        "permission": {
+          "rw": ["hermesagent", "hermesstudio"],
+          "ro": []
+        }
+      }
+    ]
+  }
+}
+

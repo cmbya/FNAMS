@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+if [ -f "${TRIM_PKGETC:-}/app.env" ]; then
+  . "${TRIM_PKGETC}/app.env"
+fi
+
+APP_ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
+PKG_VAR=${TRIM_PKGVAR:-${APP_ROOT}/var}
+PKG_TMP=${TRIM_PKGTMP:-${PKG_VAR}/tmp}
+NODE=${APP_ROOT}/app/runtime/node/bin/node
+STUDIO_ROOT=${APP_ROOT}/app/studio
+STUDIO_ENTRY=${STUDIO_ROOT}/bin/hermes-web-ui.mjs
+LOGFILE=${PKG_VAR}/logs/hermes-studio.log
+PIDFILE=${PKG_VAR}/hermes-studio.pid
+AGENT_HOME=${AGENT_HOME:-/var/apps/HermesAgent/share/data}
+
+export HERMES_HOME=${HERMES_HOME:-${AGENT_HOME}}
+export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
+export HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
+export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
+export HERMES_AGENT_BRIDGE_ENDPOINT=${HERMES_AGENT_BRIDGE_ENDPOINT:-ipc://${PKG_TMP}/hermes-agent-bridge.sock}
+export HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=${HERMES_AGENT_BRIDGE_WORKER_TRANSPORT:-ipc}
+export HERMES_GATEWAY_URL=${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}
+export GATEWAY_URL=${GATEWAY_URL:-${HERMES_GATEWAY_URL}}
+export HERMES_WEB_UI_MANAGED_GATEWAY=0
+export HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART=1
+export HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=0
+export PATH=${APP_ROOT}/app/runtime/node/bin:/usr/local/bin:${PATH}
+export NODE_ENV=production
+export BIND_HOST=${BIND_HOST:-0.0.0.0}
+export PORT=${HERMES_STUDIO_PORT:-8648}
+
+mkdir -p "${PKG_VAR}/logs" "${PKG_TMP}" "${AGENT_HOME}"
+

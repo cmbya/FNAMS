@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+
+. "$(dirname "$0")/common"
+
+is_running() {
+  [ -s "$PIDFILE" ] || return 1
+  pid=$(cat "$PIDFILE")
+  kill -0 "$pid" 2>/dev/null
+}
+
+start() {
+  if is_running; then
+    echo 'Hermes Agent is already running'
+    exit 0
+  fi
+  test -x "${APP_ROOT}/app/bin/hermes-fnos"
+  umask 077
+  setsid "${APP_ROOT}/app/bin/hermes-fnos" gateway start >>"${AGENT_LOG}" 2>&1 &
+  echo $! >"${PIDFILE}"
+  sleep 2
+  if ! is_running; then
+    echo 'Hermes Agent failed to start; check the application log.' >&2
+    exit 1
+  fi
+}
+
+stop() {
+  if ! is_running; then
+    rm -f "$PIDFILE"
+    exit 0
+  fi
+  pid=$(cat "$PIDFILE")
+  kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+  i=0
+  while is_running && [ "$i" -lt 30 ]; do
+    sleep 1
+    i=$((i + 1))
+  done
+  if is_running; then
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "$PIDFILE"
+}
+
+status() {
+  if is_running; then
+    echo "Hermes Agent is running on port ${HERMES_GATEWAY_PORT}"
+    exit 0
+  fi
+  echo 'Hermes Agent is not running' >&2
+  exit 3
+}
+
+case "${1:-}" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop; start ;;
+  status) status ;;
+  *) echo "Usage: $0 {start|stop|restart|status}" >&2; exit 2 ;;
+esac
+

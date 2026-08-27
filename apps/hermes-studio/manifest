@@ -1,0 +1,21 @@
+appname=HermesStudio
+version=0.1.0
+desc=Hermes Studio WebUI for Hermes Agent on fnOS
+display_name=Hermes Studio
+maintainer=cmbya
+distributor=cmbya
+source=thirdparty
+platform=x86
+desktop_uidir=ui
+desktop_applaunchname=HermesStudio.main
+service_port=8648
+checkport=true
+os_min_version=1.2.0401
+install_dep_apps=HermesAgent>0.1.0
+ctl_stop=true
+ctl_uninstall=true
+ctl_upgrade=true
+ctl_config=true
+disable_authorization_path=false
+check_update=false
+

@@ -1,35 +1,31 @@
-name: Check Hermes upstream Releases
+name: Check formal Hermes upstream Releases
 
 on:
   schedule:
-    - cron: '0 12 * * *'
+    - cron: '0 13 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Check latest formal Release tags
+      - name: Resolve and trigger when upstream changed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
           source versions.lock
-          for repo in NousResearch/hermes-agent EKKOLearnAI/hermes-studio; do
-            latest=$(gh api "repos/${repo}/releases" --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')
-            test -n "$latest"
-            case "$repo" in
-              NousResearch/hermes-agent) locked="$HERMES_AGENT_TAG" ;;
-              EKKOLearnAI/hermes-studio) locked="$HERMES_STUDIO_TAG" ;;
-            esac
-            if [ "$latest" != "$locked" ]; then
-              echo "New formal Release for ${repo}: ${latest} (locked: ${locked})"
-              echo 'Update versions.lock and run the compatibility build before upgrading.'
-              exit 1
-            fi
-            echo "${repo}: ${locked}"
-          done
+          latest_agent=$(gh api repos/NousResearch/hermes-agent/releases --paginate --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name' | head -n1)
+          latest_studio=$(gh api repos/EKKOLearnAI/hermes-studio/releases --paginate --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name' | head -n1)
+          if [ "$latest_agent" != "$HERMES_AGENT_TAG" ] || [ "$latest_studio" != "$HERMES_STUDIO_TAG" ]; then
+            echo "New formal Release: Agent=$latest_agent Studio=$latest_studio"
+            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" -f use_latest_releases=true
+          else
+            echo 'No new formal upstream Release.'
+          fi
+

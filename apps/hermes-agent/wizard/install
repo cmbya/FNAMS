@@ -1,0 +1,12 @@
+[
+  {
+    "stepTitle": "Hermes Agent",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Hermes Agent runs the background gateway, scheduled tasks and message platforms. Select one fnOS authorized directory for the workspace. Install Hermes Studio after Agent is running."
+      }
+    ]
+  }
+]
+

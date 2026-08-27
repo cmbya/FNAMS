@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+if [ -f "${TRIM_PKGETC:-}/app.env" ]; then
+  . "${TRIM_PKGETC}/app.env"
+fi
+
+APP_ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
+PKG_VAR=${TRIM_PKGVAR:-${APP_ROOT}/var}
+PKG_TMP=${TRIM_PKGTMP:-${PKG_VAR}/tmp}
+RUNTIME_PY=${APP_ROOT}/app/runtime/python
+PYTHON_BIN=${RUNTIME_PY}/bin/python3
+HERMES_HOME=${HERMES_HOME:-/var/apps/HermesAgent/share/data}
+WORKSPACE_DIR=${WORKSPACE_DIR:-}
+AGENT_LOG=${AGENT_LOG:-${PKG_VAR}/logs/hermes-agent.log}
+PIDFILE=${PIDFILE:-${PKG_VAR}/hermes-agent.pid}
+
+export HERMES_HOME WORKSPACE_DIR
+export PYTHONHOME=${RUNTIME_PY}
+export PYTHONPATH=${RUNTIME_PY}/lib/python${PYTHON_VERSION:-3.11}/site-packages${PYTHONPATH:+:${PYTHONPATH}}
+export PATH=${APP_ROOT}/app/bin:${RUNTIME_PY}/bin:${APP_ROOT}/app/runtime/chromium:${PATH}
+export HERMES_GATEWAY_PORT=${HERMES_GATEWAY_PORT:-8642}
+export CHROME_BIN=${CHROME_BIN:-${APP_ROOT}/app/runtime/chromium/chromium}
+
+mkdir -p "${HERMES_HOME}" "${PKG_VAR}/logs" "${PKG_TMP}"
+

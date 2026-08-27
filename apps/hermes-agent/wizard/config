@@ -1,0 +1,12 @@
+[
+  {
+    "stepTitle": "Hermes Agent",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Agent owns the gateway and persistent Hermes home. Configure models, API keys, Skills, memory, MCP, message platforms and schedules from Hermes Studio."
+      }
+    ]
+  }
+]
+

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+rm -f "${TRIM_PKGETC}/app.env" "${TRIM_PKGVAR}/hermes-studio.pid"
+
