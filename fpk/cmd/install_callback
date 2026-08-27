@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+mkdir -p "$TRIM_PKGVAR/hermes" "$TRIM_PKGVAR/studio" "$TRIM_PKGVAR/logs" "$TRIM_PKGETC" "$TRIM_PKGTMP"
+if [ ! -f "$TRIM_PKGETC/app.env" ]; then
+  authorized=${TRIM_AUTHORIZATION_PATHS:-}
+  workspace=${authorized%%:*}
+  cat >"$TRIM_PKGETC/app.env" <<EOF
+WORKSPACE_BASE=${workspace}
+CHROME_REMOTE_DEBUG_URL=
+EOF
+fi
+chown -R hermesstudio:hermesstudio "$TRIM_PKGVAR" "$TRIM_PKGETC" "$TRIM_PKGTMP" 2>/dev/null || true
+chmod 700 "$TRIM_PKGVAR/hermes" "$TRIM_PKGVAR/studio" "$TRIM_PKGETC" "$TRIM_PKGTMP"
+exit 0

@@ -1,0 +1,39 @@
+name: Build Hermes Studio FPK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'fpk/**'
+      - 'scripts/**'
+      - 'versions.lock'
+      - '.github/workflows/build-fpk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq zstd patchelf imagemagick
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Build runtime and FPK
+        env:
+          PYTHON_STANDALONE_ARCHIVE_URL: ${{ vars.PYTHON_STANDALONE_ARCHIVE_URL }}
+          CHROMIUM_ARCHIVE_URL: ${{ vars.CHROMIUM_ARCHIVE_URL }}
+          UV_BIN: uv
+        run: ./scripts/build-fpk.sh
+      - name: Upload FPK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HermesStudio-fnOS-x86_64
+          path: dist/*

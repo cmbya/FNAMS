@@ -1,0 +1,90 @@
+#!/bin/sh
+set -eu
+
+APPNAME=HermesStudio
+PORT=${HERMES_STUDIO_PORT:-8648}
+PIDFILE=${TRIM_PKGVAR}/hermesstudio.pid
+LOGFILE=${TRIM_PKGVAR}/logs/hermesstudio.log
+NODE=${TRIM_APPDEST}/runtime/node/bin/node
+STUDIO_CLI=${TRIM_APPDEST}/hermes-studio/bin/hermes-web-ui.mjs
+
+if [ -f "${TRIM_PKGETC}/app.env" ]; then
+  # shellcheck disable=SC1091
+  . "${TRIM_PKGETC}/app.env"
+fi
+
+is_running() {
+  [ -s "$PIDFILE" ] || return 1
+  pid=$(cat "$PIDFILE")
+  kill -0 "$pid" 2>/dev/null
+}
+
+health_ok() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS --max-time 3 "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1
+  else
+    wget -q -T 3 -O /dev/null "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1
+  fi
+}
+
+start() {
+  if is_running; then
+    echo "$APPNAME is already running"
+    return 0
+  fi
+  mkdir -p "$(dirname "$LOGFILE")" "$TRIM_PKGTMP"
+  export HERMES_HOME=${HERMES_HOME:-${TRIM_PKGVAR}/hermes}
+  export HERMES_WEB_UI_HOME=${HERMES_WEB_UI_HOME:-${TRIM_PKGVAR}/studio}
+  export HERMES_AGENT_ROOT=${HERMES_AGENT_ROOT:-${TRIM_APPDEST}/hermes-agent}
+  export HERMES_BIN=${HERMES_BIN:-${TRIM_APPDEST}/runtime/python/bin/hermes}
+  export HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON:-${TRIM_APPDEST}/runtime/python/bin/python3}
+  export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-${TRIM_APPDEST}/runtime/tools/uv}
+  export HERMES_AGENT_BRIDGE_ENDPOINT=${HERMES_AGENT_BRIDGE_ENDPOINT:-ipc://${TRIM_PKGTMP}/hermes-agent-bridge.sock}
+  export HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=${HERMES_AGENT_BRIDGE_WORKER_TRANSPORT:-ipc}
+  export HERMES_WORKSPACE_DIR=${WORKSPACE_BASE:-${HERMES_WORKSPACE_DIR:-}}
+  export HERMES_WEB_UI_MANAGED_GATEWAY=1
+  export HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=1
+  export BIND_HOST=0.0.0.0
+  export PORT
+  export NODE_ENV=production
+  mkdir -p "$HERMES_HOME" "$HERMES_WEB_UI_HOME"
+  umask 077
+  setsid "$NODE" "$STUDIO_CLI" "$PORT" --no-open >>"$LOGFILE" 2>&1 &
+  echo $! >"$PIDFILE"
+  sleep 1
+}
+
+stop() {
+  if ! is_running; then
+    rm -f "$PIDFILE" "${TRIM_PKGTMP}/hermes-agent-bridge.sock"
+    return 0
+  fi
+  pid=$(cat "$PIDFILE")
+  kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+  i=0
+  while is_running && [ "$i" -lt 30 ]; do
+    sleep 1
+    i=$((i + 1))
+  done
+  if is_running; then
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "$PIDFILE" "${TRIM_PKGTMP}/hermes-agent-bridge.sock"
+}
+
+status() {
+  if is_running && health_ok; then
+    echo "$APPNAME is running on port $PORT"
+    return 0
+  fi
+  echo "$APPNAME is not ready" >&2
+  return 3
+}
+
+case "${1:-}" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop ; start ;;
+  status) status ;;
+  *) echo "Usage: $0 {start|stop|restart|status}" >&2; exit 2 ;;
+esac

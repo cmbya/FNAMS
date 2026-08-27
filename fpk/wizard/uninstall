@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+echo 'Uninstall removes the application package only.'
+echo 'Persistent Hermes data is preserved under the fnOS application data directory.'
+exit 0

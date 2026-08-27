@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+echo 'Runtime configuration is managed from Hermes Studio.'
+echo 'Workspace and browser settings are stored in the application config.'
+exit 0

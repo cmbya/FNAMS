@@ -1,0 +1,35 @@
+name: Check Hermes upstream Releases
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check latest formal Release tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          source versions.lock
+          for repo in NousResearch/hermes-agent EKKOLearnAI/hermes-studio; do
+            latest=$(gh api "repos/${repo}/releases" --paginate --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')
+            test -n "$latest"
+            case "$repo" in
+              NousResearch/hermes-agent) locked="$HERMES_AGENT_TAG" ;;
+              EKKOLearnAI/hermes-studio) locked="$HERMES_STUDIO_TAG" ;;
+            esac
+            if [ "$latest" != "$locked" ]; then
+              echo "New formal Release for ${repo}: ${latest} (locked: ${locked})"
+              echo 'Update versions.lock and run the compatibility build before upgrading.'
+              exit 1
+            fi
+            echo "${repo}: ${locked}"
+          done

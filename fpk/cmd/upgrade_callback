@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+mkdir -p "$TRIM_PKGVAR/hermes" "$TRIM_PKGVAR/studio" "$TRIM_PKGVAR/logs" "$TRIM_PKGTMP"
+chown -R hermesstudio:hermesstudio "$TRIM_PKGVAR" "$TRIM_PKGETC" "$TRIM_PKGTMP" 2>/dev/null || true
+exit 0

@@ -1,0 +1,9 @@
+build/
+dist/
+fpk/app/runtime/
+fpk/app/hermes-agent/
+fpk/app/hermes-studio/
+fpk/app/ui/images/ICON*.PNG
+*.fpk
+*.tar.gz
+*.tar.zst
