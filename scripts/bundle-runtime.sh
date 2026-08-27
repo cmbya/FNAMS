@@ -22,7 +22,7 @@ tar -xJf "${WORK_DIR}/node.tar.xz" --strip-components=1 -C "${RUNTIME_DIR}/node"
 curl --fail --location --retry 3 --output "${WORK_DIR}/python.archive" "${PYTHON_STANDALONE_ARCHIVE_URL}"
 mkdir -p "${WORK_DIR}/python"
 tar -xf "${WORK_DIR}/python.archive" -C "${WORK_DIR}/python"
-PYTHON_BIN=$(find "${WORK_DIR}/python" -type f -name python3 -perm -u+x | head -1)
+PYTHON_BIN=$(find "${WORK_DIR}/python" -type f \( -name python3 -o -name 'python3.*' \) -perm -u+x | head -1)
 test -n "${PYTHON_BIN}"
 mkdir -p "${RUNTIME_DIR}/python/bin"
 cp -a "$(dirname "${PYTHON_BIN}")/." "${RUNTIME_DIR}/python/bin/"
