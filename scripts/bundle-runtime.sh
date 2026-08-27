@@ -7,9 +7,11 @@ source "${ROOT_DIR}/build/build.env" 2>/dev/null || true
 RUNTIME_DIR="${ROOT_DIR}/fpk/app/runtime"
 WORK_DIR="${ROOT_DIR}/build/runtime"
 NODE_ARCHIVE_URL=${NODE_ARCHIVE_URL:-"https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz"}
+PYTHON_STANDALONE_ARCHIVE_URL=${PYTHON_STANDALONE_ARCHIVE_URL:-"https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_BUILD_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_BUILD_DATE}-x86_64-unknown-linux-gnu-install_only.tar.gz"}
+CHROMIUM_ARCHIVE_URL=${CHROMIUM_ARCHIVE_URL:-"https://storage.googleapis.com/chrome-for-testing-public/${CHROMIUM_VERSION}/linux64/chrome-linux64.zip"}
 
-: "${PYTHON_STANDALONE_ARCHIVE_URL:?Set PYTHON_STANDALONE_ARCHIVE_URL to a reviewed Python 3.11 x86_64 archive}"
-: "${CHROMIUM_ARCHIVE_URL:?Set CHROMIUM_ARCHIVE_URL to a reviewed Chromium x86_64 archive}"
+: "${PYTHON_STANDALONE_ARCHIVE_URL:?Python archive URL is empty}"
+: "${CHROMIUM_ARCHIVE_URL:?Chromium archive URL is empty}"
 
 rm -rf "${WORK_DIR}" "${RUNTIME_DIR}/node" "${RUNTIME_DIR}/chromium" "${RUNTIME_DIR}/tools"
 mkdir -p "${WORK_DIR}" "${RUNTIME_DIR}/node" "${RUNTIME_DIR}/chromium" "${RUNTIME_DIR}/tools"
@@ -33,7 +35,10 @@ if [ -d "${PYTHON_ROOT}/include" ]; then
 fi
 
 curl --fail --location --retry 3 --output "${WORK_DIR}/chromium.archive" "${CHROMIUM_ARCHIVE_URL}"
-tar -xf "${WORK_DIR}/chromium.archive" -C "${RUNTIME_DIR}/chromium"
+case "${CHROMIUM_ARCHIVE_URL}" in
+  *.zip) unzip -q "${WORK_DIR}/chromium.archive" -d "${RUNTIME_DIR}/chromium" ;;
+  *) tar -xf "${WORK_DIR}/chromium.archive" -C "${RUNTIME_DIR}/chromium" ;;
+esac
 CHROME_BIN=$(find "${RUNTIME_DIR}/chromium" -type f \( -name chromium -o -name chromium-browser -o -name chrome \) -perm -u+x | head -1)
 test -n "${CHROME_BIN}"
 ln -sf "${CHROME_BIN}" "${RUNTIME_DIR}/chromium/chromium"
