@@ -54,12 +54,18 @@ for fpk in "${ROOT_DIR}"/dist/*.fpk; do
       echo "Agent bootstrap app.tgz is missing runtime-payload.tgz" | tee -a "$CHECK_LOG" >&2
       exit 1
     }
-    test -f "$tmp/tools/busybox" || {
+    busybox_path=$(find "$tmp" -path '*/tools/busybox' -print -quit)
+    test -n "$busybox_path" || {
       echo "Agent bootstrap app.tgz is missing tools/busybox" | tee -a "$CHECK_LOG" >&2
+      printf '  Agent bootstrap entries:\n%s\n' "$app_listing" | tee -a "$CHECK_LOG" >&2
       exit 1
     }
-    chmod 0755 "$tmp/tools/busybox"
-    payload="$tmp/runtime-payload.tgz"
+    chmod 0755 "$busybox_path"
+    payload=$(find "$tmp" -type f -name runtime-payload.tgz -print -quit)
+    test -n "$payload" || {
+      echo "Agent bootstrap app.tgz did not extract runtime-payload.tgz" | tee -a "$CHECK_LOG" >&2
+      exit 1
+    }
     gzip -t "$payload"
     runtime_listing=$(tar -tzf "$payload")
     if printf '%s\n' "$runtime_listing" | awk '/(^|\/)\.\.($|\/)|^\// {bad=1; print; exit} END {exit bad}'; then
@@ -70,7 +76,7 @@ for fpk in "${ROOT_DIR}"/dist/*.fpk; do
     fi
     unpacked="$tmp/unpacked-runtime"
     mkdir -p "$unpacked"
-    "$tmp/tools/busybox" tar -xzf "$payload" -C "$unpacked"
+    "$busybox_path" tar -xzf "$payload" -C "$unpacked"
     test -x "$unpacked/runtime/python/bin/python3" || {
       echo "Agent runtime payload did not extract Python" | tee -a "$CHECK_LOG" >&2
       exit 1
