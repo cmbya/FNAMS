@@ -1,5 +1,5 @@
 appname=HermesStudio
-version=0.1.4
+version=0.1.5
 desc=Hermes Studio WebUI for Hermes Agent on fnOS
 display_name=Hermes Studio
 maintainer=cmbya

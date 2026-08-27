@@ -1,5 +1,17 @@
 #!/bin/sh
-set -eu
-log_dir=${TRIM_PKGVAR:-/tmp}/logs
-mkdir -p "$log_dir"
-printf '%s [Hermes Agent] install_init\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"$log_dir/install.log"
+set -u
+
+temp_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesAgent-install-error.log}
+pkg_var=${TRIM_PKGVAR:-}
+log_dir=${pkg_var:+${pkg_var}/logs}
+[ -n "$log_dir" ] || log_dir=/tmp
+mkdir -p "$log_dir" 2>/dev/null || true
+install_log=${log_dir}/install.log
+
+write_log() {
+  line="$(date '+%Y-%m-%d %H:%M:%S%z') [Hermes Agent] $*"
+  printf '%s\n' "$line" >>"$install_log" 2>/dev/null || true
+  printf '%s\n' "$line" >>"$temp_log" 2>/dev/null || true
+}
+
+write_log "install_init: appdest=${TRIM_APPDEST:-<missing>} etc=${TRIM_PKGETC:-<missing>} var=${TRIM_PKGVAR:-<missing>} home=${TRIM_PKGHOME:-<missing>} shares=${TRIM_DATA_SHARE_PATHS:-<none>}"

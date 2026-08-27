@@ -1,5 +1,2 @@
 #!/bin/sh
-set -eu
-mkdir -p "${TRIM_PKGVAR}/logs"
-printf '%s [Hermes Agent] upgrade_callback\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"${TRIM_PKGVAR}/logs/install.log"
 exec "$(dirname "$0")/install_callback"

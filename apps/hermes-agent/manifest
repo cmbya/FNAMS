@@ -1,5 +1,5 @@
 appname=HermesAgent
-version=0.1.4
+version=0.1.5
 desc=Hermes Agent background gateway for fnOS
 display_name=Hermes Agent
 maintainer=cmbya
@@ -17,4 +17,4 @@ ctl_upgrade=true
 ctl_config=true
 disable_authorization_path=false
 check_update=false
-changelog=修复 fnOS 安装回调目录权限；运行时改在首次启动时离线展开并记录明确错误
+changelog=增强安装诊断：错误同时写入 fnOS 临时日志、应用日志和共享目录诊断文件

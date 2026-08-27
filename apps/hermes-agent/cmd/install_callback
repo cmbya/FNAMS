@@ -1,28 +1,46 @@
 #!/bin/sh
-set -eu
+set -u
 
-app_dest=${TRIM_APPDEST:?TRIM_APPDEST is required}
-pkg_etc=${TRIM_PKGETC:?TRIM_PKGETC is required}
-pkg_var=${TRIM_PKGVAR:?TRIM_PKGVAR is required}
-mkdir -p "$pkg_etc" "$pkg_var/logs"
-install_log=$pkg_var/logs/install.log
-log_msg() {
-  printf '%s [Hermes Agent] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$*" >>"$install_log"
-}
+# Do not use parameter-expansion failures here: fnOS otherwise reports only
+# "script failed, reason unknown" before the application has a log page.
+app_dest=${TRIM_APPDEST:-}
+pkg_etc=${TRIM_PKGETC:-}
+pkg_var=${TRIM_PKGVAR:-}
+temp_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesAgent-install-error.log}
+log_dir=${pkg_var:+${pkg_var}/logs}
+[ -n "$log_dir" ] || log_dir=/tmp
+mkdir -p "$log_dir" 2>/dev/null || true
+install_log=${log_dir}/install.log
+share_dir=${TRIM_DATA_SHARE_PATHS:-}
+share_dir=${share_dir%%:*}
+diagnostic_file=
+[ -n "$share_dir" ] && diagnostic_file=${share_dir}/HermesAgent-install-diagnostic.log
 
-fail_install() {
-  log_msg "ERROR: $*"
-  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
-    printf '%s\n' "Hermes Agent installation failed: $* (see ${install_log})" >>"${TRIM_TEMP_LOGFILE}" 2>/dev/null || true
+write_log() {
+  line="$(date '+%Y-%m-%d %H:%M:%S%z') [Hermes Agent] $*"
+  printf '%s\n' "$line" >>"$install_log" 2>/dev/null || true
+  printf '%s\n' "$line" >>"$temp_log" 2>/dev/null || true
+  if [ -n "$diagnostic_file" ]; then
+    printf '%s\n' "$line" >>"$diagnostic_file" 2>/dev/null || true
   fi
+}
+fail_install() {
+  write_log "ERROR: $*"
+  write_log "diagnostics: appdest=${app_dest:-<missing>} etc=${pkg_etc:-<missing>} var=${pkg_var:-<missing>} home=${TRIM_PKGHOME:-<missing>} shares=${TRIM_DATA_SHARE_PATHS:-<none>}"
   exit 1
 }
 
-log_msg "install_callback started"
+[ -n "$app_dest" ] || fail_install "required fnOS variable TRIM_APPDEST is missing"
+[ -n "$pkg_etc" ] || fail_install "required fnOS variable TRIM_PKGETC is missing"
+[ -n "$pkg_var" ] || fail_install "required fnOS variable TRIM_PKGVAR is missing"
+if ! mkdir -p "$pkg_etc" "$pkg_var/logs" 2>>"$install_log"; then
+  fail_install "cannot create fnOS configuration or runtime-data directory"
+fi
+write_log "install_callback started"
 
 # Keep the user's configured directories during an upgrade.
 if [ -f "${pkg_etc}/app.env" ]; then
-  log_msg "keeping existing configuration"
+  write_log "keeping existing configuration"
   exit 0
 fi
 
@@ -36,10 +54,14 @@ if [ -z "$workspace" ] && [ -n "${TRIM_DATA_ACCESSIBLE_PATHS:-}" ]; then
   workspace=${TRIM_DATA_ACCESSIBLE_PATHS%%:*}
 fi
 umask 077
-{
+if ! {
   printf 'HERMES_HOME=%s\n' "$home"
   printf 'WORKSPACE_DIR=%s\n' "$workspace"
   printf 'HERMES_GATEWAY_PORT=8642\n'
-} >"${pkg_etc}/app.env"
-mkdir -p "$home"
-log_msg "configured home=${home} workspace=${workspace:-<not-set>} gateway_port=8642"
+} >"${pkg_etc}/app.env"; then
+  fail_install "cannot write application configuration"
+fi
+if ! mkdir -p "$home" 2>>"$install_log"; then
+  fail_install "cannot create Hermes home directory: ${home}"
+fi
+write_log "configured home=${home} workspace=${workspace:-<not-set>} gateway_port=8642"
