@@ -16,7 +16,7 @@ rm -rf "$WORK_DIR" "${OUT_DIR}/runtime"
 mkdir -p "$WORK_DIR/python" "$PY_ROOT" "$CHROME_ROOT" "${OUT_DIR}/bin"
 curl --fail --location --retry 3 --output "$WORK_DIR/python.tar.gz" "$PY_URL"
 tar -xzf "$WORK_DIR/python.tar.gz" -C "$WORK_DIR/python"
-python_bin=$(find "$WORK_DIR/python" -type f -path '*/bin/python3' -perm -u+x | head -n1)
+python_bin=$(find "$WORK_DIR/python" -type f \( -path '*/bin/python3' -o -path '*/bin/python3.*' \) -perm -u+x | sort | head -n1)
 test -n "$python_bin"
 python_base=$(dirname "$(dirname "$python_bin")")
 cp -a "$python_base/." "$PY_ROOT/"
@@ -61,4 +61,3 @@ chrome_bin=$(find "$CHROME_ROOT" -type f \( -name chrome -o -name chromium \) -p
 test -n "$chrome_bin"
 ln -sf "$chrome_bin" "${CHROME_ROOT}/chromium"
 echo 'Agent runtime, dependencies and fallback Chromium bundled.'
-
