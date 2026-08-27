@@ -1,3 +1,58 @@
+name: Build Hermes Agent and Studio FPK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'versions.lock'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      use_latest_releases:
+        description: 'Resolve the newest formal upstream Releases'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq zstd patchelf imagemagick unzip xz-utils
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Install fnpack
+        run: |
+          mkdir -p "$RUNNER_TEMP/tools"
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/tools/fnpack" \
+            "${FNPACK_URL:-https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64}"
+          chmod 0755 "$RUNNER_TEMP/tools/fnpack"
+          echo "FNPACK=$RUNNER_TEMP/tools/fnpack" >> "$GITHUB_ENV"
+      - name: Run static checks
+        run: ./tests/static.sh
+      - name: Build both FPKs
+        env:
+          USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
+        run: ./scripts/build-release.sh
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hermes-fnOS-${{ github.sha }}
+          path: dist/
       - name: Create or update Release
         run: |
           source versions.lock
