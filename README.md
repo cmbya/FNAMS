@@ -22,7 +22,7 @@ export FPK_VERSION=0.1.3
 
 1. 安装 `HermesAgent-0.1.3-fnOS-x86_64.fpk`。
 2. 在 Agent 配置中选择一个 fnOS 授权目录，并配置模型/API 和消息平台。
-3. 安装 `HermesStudio-0.1.2-fnOS-x86_64.fpk`。
+3. 安装 `HermesStudio-0.1.3-fnOS-x86_64.fpk`。
 4. 从 fnOS 应用中心打开 Hermes Studio。
 
 Studio 依赖 Agent。若 Agent 没有安装、没有启动或共享目录权限不正确，Studio 会显示明确的修复提示。
