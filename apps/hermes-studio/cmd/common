@@ -19,9 +19,23 @@ VIEWER_LOG=${VIEWER_LOG:-${LOG_DIR}/log-viewer.log}
 PIDFILE=${PKG_VAR}/hermes-studio.pid
 VIEWER_PIDFILE=${PKG_VAR}/hermes-studio-log-viewer.pid
 VIEWER_SCRIPT=${APP_ROOT}/logs/log_server.mjs
-AGENT_HOME=${AGENT_HOME:-/var/apps/HermesAgent/share/data}
+WEB_UI_HOME=${HERMES_WEB_UI_HOME:-${PKG_VAR}/web-ui}
+AGENT_HOME=${AGENT_HOME:-}
 
-export HERMES_HOME=${HERMES_HOME:-${AGENT_HOME}}
+# HermesAgent writes a small world-readable path file beside its launcher.
+# This avoids assuming the unavailable /var/apps/HermesAgent/share/data path.
+agent_launcher=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
+agent_launcher_real=$(readlink -f "$agent_launcher" 2>/dev/null || true)
+if [ -n "$agent_launcher_real" ]; then
+  agent_root=$(CDPATH= cd -- "$(dirname -- "$agent_launcher_real")/.." 2>/dev/null && pwd || true)
+  agent_metadata=${agent_root:+${agent_root}/.hermes-agent-fnos.env}
+  if [ -n "${agent_metadata:-}" ] && [ -r "$agent_metadata" ]; then
+    . "$agent_metadata"
+    AGENT_HOME=${HERMES_HOME:-$AGENT_HOME}
+  fi
+fi
+
+if [ -n "$AGENT_HOME" ]; then export HERMES_HOME=$AGENT_HOME; else unset HERMES_HOME 2>/dev/null || true; fi
 export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
 export HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
 export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
@@ -40,8 +54,9 @@ export HERMES_LOG_DIR=${LOG_DIR}
 export HERMES_LOG_APP_NAME="Hermes Studio"
 export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8649}
 export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
+export HERMES_WEB_UI_HOME=${WEB_UI_HOME}
 
-mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${AGENT_HOME}"
+mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}"
 
 log_msg() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"

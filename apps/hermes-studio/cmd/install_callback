@@ -39,21 +39,14 @@ if ! mkdir -p "$pkg_etc" "$pkg_var/logs" 2>>"$install_log"; then
 fi
 write_log "install_callback started"
 
-# Configuration is intentionally preserved during an upgrade.
-if [ -f "${pkg_etc}/app.env" ]; then
-  write_log "keeping existing configuration"
-  exit 0
-fi
-
-agent_home=/var/apps/HermesAgent/share/data
-agent_home_exists=false
-[ -d "$agent_home" ] && agent_home_exists=true
+# Agent data is resolved from the Agent's public path metadata at runtime.
+# Do not hard-code /var/apps: it is absent on current fnOS installations.
+agent_home='<resolved-at-start>'
 umask 077
 if ! {
-  printf 'AGENT_HOME=%s\n' "$agent_home"
   printf 'HERMES_GATEWAY_URL=http://127.0.0.1:8642\n'
   printf 'HERMES_STUDIO_PORT=8648\n'
 } >"${pkg_etc}/app.env"; then
   fail_install "cannot write application configuration"
 fi
-write_log "configured agent_home=${agent_home} agent_share_exists=${agent_home_exists} gateway_url=http://127.0.0.1:8642 studio_port=8648"
+write_log "configured agent_home=${agent_home} gateway_url=http://127.0.0.1:8642 studio_port=8648"

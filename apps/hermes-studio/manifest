@@ -1,5 +1,5 @@
 appname=HermesStudio
-version=0.1.8
+version=0.1.9
 desc=Hermes Studio WebUI for Hermes Agent on fnOS
 display_name=Hermes Studio
 maintainer=cmbya
@@ -18,4 +18,4 @@ ctl_upgrade=true
 ctl_config=true
 disable_authorization_path=false
 check_update=false
-changelog=增加安装、升级和配置失败诊断日志
+changelog=修复 Hermes Agent 数据目录识别和前台守护启动

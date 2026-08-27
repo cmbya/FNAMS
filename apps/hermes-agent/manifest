@@ -1,5 +1,5 @@
 appname=HermesAgent
-version=0.1.8
+version=0.1.9
 desc=Hermes Agent background gateway for fnOS
 display_name=Hermes Agent
 maintainer=cmbya
@@ -17,4 +17,4 @@ ctl_upgrade=true
 ctl_config=true
 disable_authorization_path=false
 check_update=false
-changelog=由 fnOS 直接守护 Gateway，避免依赖 Hermes 上游 systemd 用户服务
+changelog=修复与 Hermes Studio 的运行环境和数据目录连接

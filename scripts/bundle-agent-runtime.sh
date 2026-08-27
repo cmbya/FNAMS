@@ -33,7 +33,19 @@ HERMES_NIX_BUILD=1 uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_
 cat >"${OUT_DIR}/bin/hermes-fnos" <<'EOF'
 #!/bin/sh
 set -eu
-ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
+ROOT=${TRIM_APPDEST:-}
+# Hermes Studio invokes this launcher through /usr/local/bin. Its own
+# TRIM_APPDEST then points at Studio, so prefer it only when it is an Agent
+# runtime and otherwise resolve this launcher's real location.
+if [ ! -x "${ROOT}/runtime/python/bin/python3" ]; then
+  launcher=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+  ROOT=$(CDPATH= cd -- "$(dirname -- "$launcher")/.." && pwd)
+fi
+metadata=${ROOT}/.hermes-agent-fnos.env
+if [ -r "$metadata" ]; then
+  . "$metadata"
+  export HERMES_HOME WORKSPACE_DIR
+fi
 PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
@@ -43,7 +55,16 @@ EOF
 cat >"${OUT_DIR}/bin/hermes-python-fnos" <<'EOF'
 #!/bin/sh
 set -eu
-ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
+ROOT=${TRIM_APPDEST:-}
+if [ ! -x "${ROOT}/runtime/python/bin/python3" ]; then
+  launcher=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+  ROOT=$(CDPATH= cd -- "$(dirname -- "$launcher")/.." && pwd)
+fi
+metadata=${ROOT}/.hermes-agent-fnos.env
+if [ -r "$metadata" ]; then
+  . "$metadata"
+  export HERMES_HOME WORKSPACE_DIR
+fi
 PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
@@ -52,7 +73,12 @@ EOF
 cat >"${OUT_DIR}/bin/hermes-uv-fnos" <<'EOF'
 #!/bin/sh
 set -eu
-exec "${TRIM_APPDEST:?TRIM_APPDEST is required}/bin/uv" "$@"
+ROOT=${TRIM_APPDEST:-}
+if [ ! -x "${ROOT}/bin/uv" ]; then
+  launcher=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+  ROOT=$(CDPATH= cd -- "$(dirname -- "$launcher")/.." && pwd)
+fi
+exec "${ROOT}/bin/uv" "$@"
 EOF
 chmod 0755 "${OUT_DIR}/bin/hermes-fnos" "${OUT_DIR}/bin/hermes-python-fnos" "${OUT_DIR}/bin/hermes-uv-fnos"
 curl --fail --location --retry 3 --output "$WORK_DIR/chromium.zip" "$CHROME_URL"

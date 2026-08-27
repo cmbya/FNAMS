@@ -1,6 +1,10 @@
 name: Build selected Hermes fnOS FPK
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/build-both-request'
   workflow_dispatch:
     inputs:
       target:
@@ -40,19 +44,19 @@ jobs:
         run: ./tests/static.sh
       - name: Build selected FPK
         env:
-          BUILD_TARGET: ${{ inputs.target }}
+          BUILD_TARGET: ${{ inputs.target || 'both' }}
           USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
         run: ./scripts/build-release.sh
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hermes-${{ inputs.target }}-fnOS-${{ github.sha }}
+          name: Hermes-${{ inputs.target || 'both' }}-fnOS-${{ github.sha }}
           path: dist/
       - name: Create or update Release
         run: |
           source versions.lock
           PACKAGE_VERSION="$FPK_VERSION"
-          target="${{ inputs.target }}"
+          target="${{ inputs.target || 'both' }}"
           case "$target" in
             agent) tag="agent-v${PACKAGE_VERSION}"; title="Hermes Agent fnOS ${PACKAGE_VERSION}"; notes="Hermes Agent 单独构建包。目标平台：fnOS 1.2 x86_64。" ;;
             studio) tag="studio-v${PACKAGE_VERSION}"; title="Hermes Studio fnOS ${PACKAGE_VERSION}"; notes="Hermes Studio 单独构建包；需已安装 Hermes Agent。目标平台：fnOS 1.2 x86_64。" ;;

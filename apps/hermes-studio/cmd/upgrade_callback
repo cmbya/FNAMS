@@ -12,5 +12,5 @@ log() {
   printf '%s\n' "$line" >>"$temp_log" 2>/dev/null || true
 }
 [ -n "$pkg_etc" ] || { log "ERROR: required fnOS variable TRIM_PKGETC is missing"; exit 1; }
-[ -f "${pkg_etc}/app.env" ] || exec "$(dirname "$0")/install_callback"
-log "upgrade_callback; keeping existing configuration"
+log "upgrade_callback; refreshing fnOS integration configuration"
+exec "$(dirname "$0")/install_callback"

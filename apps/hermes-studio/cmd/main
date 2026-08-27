@@ -37,14 +37,16 @@ start() {
     echo 'Hermes Studio is already running'
     exit 0
   fi
-  log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; agent_home=${AGENT_HOME}; gateway_url=${HERMES_GATEWAY_URL}"
+  log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; agent_home=${HERMES_HOME:-<unresolved>}; gateway_url=${HERMES_GATEWAY_URL}"
   test -x "$NODE"
   test -f "$STUDIO_ENTRY"
   test -x /usr/local/bin/hermes-fnos
   test -x /usr/local/bin/hermes-python-fnos
   umask 077
   start_viewer
-  setsid "$NODE" "$STUDIO_ENTRY" start "$PORT" --no-open >>"$LOGFILE" 2>&1 &
+  # `start` daemonizes and exits, which makes fnOS report a false startup
+  # failure. Invoke the upstream entry in foreground mode for fnOS to manage.
+  setsid "$NODE" "$STUDIO_ENTRY" "$PORT" --no-open >>"$LOGFILE" 2>&1 &
   echo $! >"$PIDFILE"
   sleep 2
   if ! is_running; then
