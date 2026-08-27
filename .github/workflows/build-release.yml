@@ -66,3 +66,4 @@ jobs:
               --title "Hermes Agent + Hermes Studio fnOS ${PACKAGE_VERSION}" \
               --notes "Hermes Agent + Hermes Studio 双 FPK 版本。安装顺序：HermesAgent，然后 HermesStudio。目标平台：fnOS 1.2 x86_64。"
           fi
+          gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
