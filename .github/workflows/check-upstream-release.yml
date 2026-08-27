@@ -20,7 +20,7 @@ jobs:
           set -eu
           source versions.lock
           for repo in NousResearch/hermes-agent EKKOLearnAI/hermes-studio; do
-            latest=$(gh api "repos/${repo}/releases" --paginate --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')
+            latest=$(gh api "repos/${repo}/releases" --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')
             test -n "$latest"
             case "$repo" in
               NousResearch/hermes-agent) locked="$HERMES_AGENT_TAG" ;;

@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "${ROOT_DIR}/versions.lock"
+source "${ROOT_DIR}/build/upstream.env" 2>/dev/null || true
 STAGE_DIR="${ROOT_DIR}/build/studio-release"
 DEST_DIR="${ROOT_DIR}/fpk/app/hermes-studio"
 ARCHIVE="${STAGE_DIR}/hermes-web-ui-${HERMES_STUDIO_VERSION}.tar.gz"

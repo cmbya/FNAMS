@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 BUILD_DIR="${ROOT_DIR}/build/upstream"
 source "${ROOT_DIR}/versions.lock"
+source "${ROOT_DIR}/build/build.env" 2>/dev/null || true
+source "${ROOT_DIR}/build/upstream.env" 2>/dev/null || true
 
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"

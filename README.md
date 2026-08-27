@@ -16,6 +16,8 @@ export CHROMIUM_ARCHIVE_URL='https://...'
 
 构建脚本默认只下载锁定的正式 Release，并从上游 `uv.lock` 导出除语音相关 extras 外的完整功能依赖（含消息平台）。不会迁移 Docker 数据。所有运行时依赖进入 FPK，安装阶段不访问网络。
 
+GitHub Actions 的每日构建和手动构建默认需要在仓库 Variables 中设置 `PYTHON_STANDALONE_ARCHIVE_URL` 与 `CHROMIUM_ARCHIVE_URL`，分别指向已审核的 Python 3.11、Chromium x86_64 离线归档。这样可以避免把未经审核的第三方运行时静默带入个人 FPK。
+
 ## 运行约束
 
 - 目标架构：x86_64（fnOS manifest 使用 `platform=x86`）。

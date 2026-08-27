@@ -10,6 +10,11 @@ BOOTSTRAP_PYTHON=${BOOTSTRAP_PYTHON:-python3.11}
 AGENT_EXTRAS=${AGENT_EXTRAS:-all,messaging,matrix,slack,dingtalk,feishu,wecom,teams,anthropic,exa,firecrawl,parallel-web,fal,modal,daytona,vercel,hindsight,bedrock,vertex,azure-identity,youtube}
 EOF
 
+rm -f build/upstream.env
+if [ "${USE_LATEST_RELEASES:-0}" = 1 ]; then
+  ./scripts/resolve-releases.sh
+fi
+
 ./scripts/fetch-upstream.sh
 ./scripts/bundle-runtime.sh
 ./scripts/build-agent.sh
@@ -32,7 +37,7 @@ else
   FNPACK=$(command -v fnpack)
 fi
 
-rm -f dist/*.fpk dist/*.sha256
+rm -f dist/*.fpk dist/*.sha256 fpk/*.fpk
 (
   cd "${ROOT_DIR}/fpk"
   "${FNPACK:-fnpack}" build --directory "${ROOT_DIR}/fpk"

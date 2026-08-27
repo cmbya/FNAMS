@@ -2,6 +2,14 @@ name: Build Hermes Studio FPK
 
 on:
   workflow_dispatch:
+    inputs:
+      use_latest_releases:
+        description: 'Build the newest formal upstream Releases'
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: '0 13 * * *'
   push:
     branches: [main]
     paths:
@@ -31,7 +39,13 @@ jobs:
           PYTHON_STANDALONE_ARCHIVE_URL: ${{ vars.PYTHON_STANDALONE_ARCHIVE_URL }}
           CHROMIUM_ARCHIVE_URL: ${{ vars.CHROMIUM_ARCHIVE_URL }}
           UV_BIN: uv
-        run: ./scripts/build-fpk.sh
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = schedule ] || [ "${{ inputs.use_latest_releases }}" = true ]; then
+            USE_LATEST_RELEASES=1 ./scripts/build-fpk.sh
+          else
+            ./scripts/build-fpk.sh
+          fi
       - name: Upload FPK
         uses: actions/upload-artifact@v4
         with:
