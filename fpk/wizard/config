@@ -1,6 +1,11 @@
-#!/bin/sh
-set -eu
-
-echo 'Runtime configuration is managed from Hermes Studio.'
-echo 'Workspace and browser settings are stored in the application config.'
-exit 0
+[
+  {
+    "stepTitle": "Hermes Studio",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "Manage the workspace, Chrome connection, API keys, message platforms, Skills, MCP servers, schedules and other runtime settings in Hermes Studio."
+      }
+    ]
+  }
+]

@@ -1,7 +1,11 @@
-#!/bin/sh
-set -eu
-
-echo 'Hermes Studio will run as a single native fnOS application.'
-echo 'Choose an authorized fnOS directory as the Agent workspace.'
-echo 'The web interface listens on LAN port 8648.'
-exit 0
+[
+  {
+    "stepTitle": "Hermes Studio",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "This package runs Hermes Agent and Hermes Studio as one native fnOS application. Authorize one fnOS directory for the Agent workspace; the first authorized directory is used. The web interface listens on LAN port 8648."
+      }
+    ]
+  }
+]
