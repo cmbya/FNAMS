@@ -52,7 +52,10 @@ start() {
   test -x "${APP_ROOT}/bin/hermes-fnos"
   umask 077
   start_viewer
-  setsid "${APP_ROOT}/bin/hermes-fnos" gateway start >>"${AGENT_LOG}" 2>&1 &
+  # fnOS is the service supervisor. Do not call `gateway start`: that command
+  # expects Hermes to have installed its own systemd user service, which is
+  # neither needed nor suitable for a native fnOS application.
+  setsid "${APP_ROOT}/bin/hermes-fnos" gateway run >>"${AGENT_LOG}" 2>&1 &
   echo $! >"${PIDFILE}"
   sleep 2
   if ! is_running; then
