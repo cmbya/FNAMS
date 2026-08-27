@@ -12,14 +12,14 @@ EOF
 
 rm -f build/upstream.env
 if [ "${USE_LATEST_RELEASES:-0}" = 1 ]; then
-  ./scripts/resolve-releases.sh
+  bash ./scripts/resolve-releases.sh
 fi
 
-./scripts/fetch-upstream.sh
-./scripts/bundle-runtime.sh
-./scripts/build-agent.sh
-./scripts/build-studio.sh
-./scripts/verify-runtime.sh
+bash ./scripts/fetch-upstream.sh
+bash ./scripts/bundle-runtime.sh
+bash ./scripts/build-agent.sh
+bash ./scripts/build-studio.sh
+bash ./scripts/verify-runtime.sh
 
 test -f fpk/manifest
 test -f fpk/config/privilege
