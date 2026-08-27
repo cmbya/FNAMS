@@ -1,5 +1,5 @@
 appname=HermesAgent
-version=0.1.7
+version=0.1.8
 desc=Hermes Agent background gateway for fnOS
 display_name=Hermes Agent
 maintainer=cmbya

@@ -1,5 +1,8 @@
 #!/bin/sh
-set -eu
+set -u
 log_dir=${TRIM_PKGVAR:-/tmp}/logs
-mkdir -p "$log_dir"
-printf '%s [Hermes Studio] install_init\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"$log_dir/install.log"
+temp_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-install-error.log}
+mkdir -p "$log_dir" 2>/dev/null || true
+line="$(date '+%Y-%m-%d %H:%M:%S%z') [Hermes Studio] install_init: appdest=${TRIM_APPDEST:-<missing>} etc=${TRIM_PKGETC:-<missing>} var=${TRIM_PKGVAR:-<missing>} shares=${TRIM_DATA_SHARE_PATHS:-<none>}"
+printf '%s\n' "$line" >>"$log_dir/install.log" 2>/dev/null || true
+printf '%s\n' "$line" >>"$temp_log" 2>/dev/null || true

@@ -1,5 +1,16 @@
 #!/bin/sh
-set -eu
-test -f "${TRIM_PKGETC}/app.env" || exec "$(dirname "$0")/install_callback"
-mkdir -p "${TRIM_PKGVAR}/logs"
-printf '%s [Hermes Studio] upgrade_callback\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"${TRIM_PKGVAR}/logs/install.log"
+set -u
+pkg_etc=${TRIM_PKGETC:-}
+pkg_var=${TRIM_PKGVAR:-}
+temp_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-install-error.log}
+log_dir=${pkg_var:+${pkg_var}/logs}
+[ -n "$log_dir" ] || log_dir=/tmp
+mkdir -p "$log_dir" 2>/dev/null || true
+log() {
+  line="$(date '+%Y-%m-%d %H:%M:%S%z') [Hermes Studio] $*"
+  printf '%s\n' "$line" >>"$log_dir/install.log" 2>/dev/null || true
+  printf '%s\n' "$line" >>"$temp_log" 2>/dev/null || true
+}
+[ -n "$pkg_etc" ] || { log "ERROR: required fnOS variable TRIM_PKGETC is missing"; exit 1; }
+[ -f "${pkg_etc}/app.env" ] || exec "$(dirname "$0")/install_callback"
+log "upgrade_callback; keeping existing configuration"
