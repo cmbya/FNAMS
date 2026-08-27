@@ -1,4 +1,5 @@
 #!/bin/sh
 set -eu
-rm -f "${TRIM_PKGETC}/app.env" "${TRIM_PKGVAR}/hermes-agent.pid"
-
+mkdir -p "${TRIM_PKGVAR}/logs"
+printf '%s [Hermes Agent] uninstall_callback\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"${TRIM_PKGVAR}/logs/install.log"
+rm -f "${TRIM_PKGETC}/app.env" "${TRIM_PKGVAR}/hermes-agent.pid" "${TRIM_PKGVAR}/hermes-agent-log-viewer.pid"

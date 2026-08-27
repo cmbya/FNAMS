@@ -9,5 +9,8 @@ jq empty "$ROOT_DIR/apps/hermes-studio/config/resource"
 grep -q '^appname=HermesAgent$' "$ROOT_DIR/apps/hermes-agent/manifest"
 grep -q '^appname=HermesStudio$' "$ROOT_DIR/apps/hermes-studio/manifest"
 grep -q '^install_dep_apps=HermesAgent>0.1.0$' "$ROOT_DIR/apps/hermes-studio/manifest"
+if command -v node >/dev/null 2>&1; then
+  node --check "$ROOT_DIR/apps/hermes-studio/app/logs/log_server.mjs"
+fi
+python3 -c 'from pathlib import Path; p=Path("'"$ROOT_DIR"'/apps/hermes-agent/app/logs/log_server.py"); compile(p.read_text(), str(p), "exec")'
 echo 'Static source checks passed.'
-

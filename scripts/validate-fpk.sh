@@ -10,4 +10,5 @@ for fpk in "$ROOT_DIR"/dist/*.fpk; do
   test -s "$fpk"
   tar -tf "$fpk" >/dev/null
 done
+"$ROOT_DIR/scripts/verify-fpk-payload.sh"
 echo 'Static FPK validation passed.'

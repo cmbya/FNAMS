@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 mkdir -p "${TRIM_PKGETC}" "${TRIM_PKGVAR}/logs"
+install_log=${TRIM_PKGVAR}/logs/install.log
+printf '%s [Hermes Studio] install_callback started\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"$install_log"
 agent_home=/var/apps/HermesAgent/share/data
 if [ -n "${TRIM_DATA_SHARE_PATHS:-}" ]; then
   candidate=/var/apps/HermesAgent/share/data
@@ -12,4 +14,4 @@ umask 077
   printf 'HERMES_GATEWAY_URL=http://127.0.0.1:8642\n'
   printf 'HERMES_STUDIO_PORT=8648\n'
 } >"${TRIM_PKGETC}/app.env"
-
+printf '%s [Hermes Studio] configured agent_home=%s gateway_url=http://127.0.0.1:8642 studio_port=8648\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$agent_home" >>"$install_log"

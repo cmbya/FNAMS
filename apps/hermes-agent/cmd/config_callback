@@ -1,4 +1,5 @@
 #!/bin/sh
 set -eu
 test -f "${TRIM_PKGETC}/app.env" || exit 0
-
+mkdir -p "${TRIM_PKGVAR}/logs"
+printf '%s [Hermes Agent] config_callback\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"${TRIM_PKGVAR}/logs/install.log"

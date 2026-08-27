@@ -8,7 +8,15 @@
       "port": 8642,
       "url": "/health",
       "allUsers": true
+    },
+    "HermesAgent.logs": {
+      "title": "Hermes Agent 日志",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "protocol": "http",
+      "port": 8643,
+      "url": "/",
+      "allUsers": true
     }
   }
 }
-

@@ -11,8 +11,14 @@ PKG_TMP=${TRIM_PKGTMP:-${PKG_VAR}/tmp}
 NODE=${APP_ROOT}/app/runtime/node/bin/node
 STUDIO_ROOT=${APP_ROOT}/app/studio
 STUDIO_ENTRY=${STUDIO_ROOT}/bin/hermes-web-ui.mjs
-LOGFILE=${PKG_VAR}/logs/hermes-studio.log
+LOG_DIR=${LOG_DIR:-${PKG_VAR}/logs}
+APP_LOG=${APP_LOG:-${LOG_DIR}/app.log}
+LOGFILE=${LOGFILE:-${LOG_DIR}/studio.log}
+INSTALL_LOG=${INSTALL_LOG:-${LOG_DIR}/install.log}
+VIEWER_LOG=${VIEWER_LOG:-${LOG_DIR}/log-viewer.log}
 PIDFILE=${PKG_VAR}/hermes-studio.pid
+VIEWER_PIDFILE=${PKG_VAR}/hermes-studio-log-viewer.pid
+VIEWER_SCRIPT=${APP_ROOT}/app/logs/log_server.mjs
 AGENT_HOME=${AGENT_HOME:-/var/apps/HermesAgent/share/data}
 
 export HERMES_HOME=${HERMES_HOME:-${AGENT_HOME}}
@@ -30,6 +36,13 @@ export PATH=${APP_ROOT}/app/runtime/node/bin:/usr/local/bin:${PATH}
 export NODE_ENV=production
 export BIND_HOST=${BIND_HOST:-0.0.0.0}
 export PORT=${HERMES_STUDIO_PORT:-8648}
+export HERMES_LOG_DIR=${LOG_DIR}
+export HERMES_LOG_APP_NAME="Hermes Studio"
+export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8649}
+export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
 
-mkdir -p "${PKG_VAR}/logs" "${PKG_TMP}" "${AGENT_HOME}"
+mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${AGENT_HOME}"
 
+log_msg() {
+  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"
+}

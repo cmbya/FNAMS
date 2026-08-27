@@ -12,8 +12,15 @@ RUNTIME_PY=${APP_ROOT}/app/runtime/python
 PYTHON_BIN=${RUNTIME_PY}/bin/python3
 HERMES_HOME=${HERMES_HOME:-/var/apps/HermesAgent/share/data}
 WORKSPACE_DIR=${WORKSPACE_DIR:-}
-AGENT_LOG=${AGENT_LOG:-${PKG_VAR}/logs/hermes-agent.log}
+LOG_DIR=${LOG_DIR:-${PKG_VAR}/logs}
+APP_LOG=${APP_LOG:-${LOG_DIR}/app.log}
+AGENT_LOG=${AGENT_LOG:-${LOG_DIR}/gateway.log}
+INSTALL_LOG=${INSTALL_LOG:-${LOG_DIR}/install.log}
+BROWSER_LOG=${BROWSER_LOG:-${LOG_DIR}/browser.log}
+VIEWER_LOG=${VIEWER_LOG:-${LOG_DIR}/log-viewer.log}
 PIDFILE=${PIDFILE:-${PKG_VAR}/hermes-agent.pid}
+VIEWER_PIDFILE=${VIEWER_PIDFILE:-${PKG_VAR}/hermes-agent-log-viewer.pid}
+VIEWER_SCRIPT=${APP_ROOT}/app/logs/log_server.py
 
 export HERMES_HOME WORKSPACE_DIR
 export PYTHONHOME=${RUNTIME_PY}
@@ -21,6 +28,13 @@ export PYTHONPATH=${RUNTIME_PY}/lib/python${PYTHON_VERSION:-3.11}/site-packages$
 export PATH=${APP_ROOT}/app/bin:${RUNTIME_PY}/bin:${APP_ROOT}/app/runtime/chromium:${PATH}
 export HERMES_GATEWAY_PORT=${HERMES_GATEWAY_PORT:-8642}
 export CHROME_BIN=${CHROME_BIN:-${APP_ROOT}/app/runtime/chromium/chromium}
+export HERMES_LOG_DIR=${LOG_DIR}
+export HERMES_LOG_APP_NAME="Hermes Agent"
+export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8643}
+export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
 
-mkdir -p "${HERMES_HOME}" "${PKG_VAR}/logs" "${PKG_TMP}"
+mkdir -p "${HERMES_HOME}" "${LOG_DIR}" "${PKG_TMP}"
 
+log_msg() {
+  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"
+}

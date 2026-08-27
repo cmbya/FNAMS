@@ -53,17 +53,16 @@ jobs:
         with:
           name: Hermes-fnOS-${{ github.sha }}
           path: dist/
-      - name: Create or update v0.1.0 Release
-        env:
-          PACKAGE_VERSION: 0.1.0
+      - name: Create or update Release
         run: |
+          source versions.lock
+          PACKAGE_VERSION="$FPK_VERSION"
           tag="v${PACKAGE_VERSION}"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json \
+            gh release create "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log \
               --repo "$GITHUB_REPOSITORY" \
               --title "Hermes Agent + Hermes Studio fnOS ${PACKAGE_VERSION}" \
-              --notes "首个双 FPK 版本。安装顺序：HermesAgent，然后 HermesStudio。目标平台：fnOS 1.2 x86_64。"
+              --notes "Hermes Agent + Hermes Studio 双 FPK 版本。安装顺序：HermesAgent，然后 HermesStudio。目标平台：fnOS 1.2 x86_64。"
           fi
-

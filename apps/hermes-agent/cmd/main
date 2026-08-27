@@ -9,25 +9,65 @@ is_running() {
   kill -0 "$pid" 2>/dev/null
 }
 
+viewer_is_running() {
+  [ -s "$VIEWER_PIDFILE" ] || return 1
+  viewer_pid=$(cat "$VIEWER_PIDFILE")
+  kill -0 "$viewer_pid" 2>/dev/null
+}
+
+start_viewer() {
+  if viewer_is_running; then
+    return 0
+  fi
+  test -f "$VIEWER_SCRIPT"
+  setsid "$PYTHON_BIN" "$VIEWER_SCRIPT" >>"$VIEWER_LOG" 2>&1 &
+  echo $! >"$VIEWER_PIDFILE"
+}
+
+stop_viewer() {
+  if ! viewer_is_running; then
+    rm -f "$VIEWER_PIDFILE"
+    return 0
+  fi
+  viewer_pid=$(cat "$VIEWER_PIDFILE")
+  kill -TERM -- "-$viewer_pid" 2>/dev/null || kill -TERM "$viewer_pid" 2>/dev/null || true
+  i=0
+  while viewer_is_running && [ "$i" -lt 10 ]; do
+    sleep 1
+    i=$((i + 1))
+  done
+  if viewer_is_running; then
+    kill -KILL -- "-$viewer_pid" 2>/dev/null || kill -KILL "$viewer_pid" 2>/dev/null || true
+  fi
+  rm -f "$VIEWER_PIDFILE"
+}
+
 start() {
   if is_running; then
     echo 'Hermes Agent is already running'
     exit 0
   fi
+  log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; hermes_home=${HERMES_HOME}; workspace=${WORKSPACE_DIR:-<not-set>}"
   test -x "${APP_ROOT}/app/bin/hermes-fnos"
   umask 077
+  start_viewer
   setsid "${APP_ROOT}/app/bin/hermes-fnos" gateway start >>"${AGENT_LOG}" 2>&1 &
   echo $! >"${PIDFILE}"
   sleep 2
   if ! is_running; then
+    log_msg "gateway failed to start; inspect gateway.log and log-viewer.log"
+    stop_viewer
     echo 'Hermes Agent failed to start; check the application log.' >&2
     exit 1
   fi
+  log_msg "gateway started; gateway_port=${HERMES_GATEWAY_PORT}; log_viewer_port=${HERMES_LOG_VIEWER_PORT}"
 }
 
 stop() {
+  log_msg "stop requested"
   if ! is_running; then
     rm -f "$PIDFILE"
+    stop_viewer
     exit 0
   fi
   pid=$(cat "$PIDFILE")
@@ -41,15 +81,34 @@ stop() {
     kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
   fi
   rm -f "$PIDFILE"
+  stop_viewer
+  log_msg "stopped"
 }
 
 status() {
   if is_running; then
-    echo "Hermes Agent is running on port ${HERMES_GATEWAY_PORT}"
+    if viewer_is_running; then
+      echo "Hermes Agent is running on port ${HERMES_GATEWAY_PORT}; logs on port ${HERMES_LOG_VIEWER_PORT}"
+    else
+      echo "Hermes Agent is running on port ${HERMES_GATEWAY_PORT}; log viewer is not running" >&2
+    fi
     exit 0
   fi
   echo 'Hermes Agent is not running' >&2
   exit 3
+}
+
+logs() {
+  case "${2:-all}" in
+    all) files="${LOG_DIR}"/*.log ;;
+    install|app|gateway|browser|log-viewer) files="${LOG_DIR}/${2}.log" ;;
+    *) echo "Usage: $0 logs {all|install|app|gateway|browser|log-viewer}" >&2; exit 2 ;;
+  esac
+  for file in $files; do
+    [ -f "$file" ] || continue
+    echo "===== $(basename "$file") ====="
+    tail -n "${HERMES_LOG_LINES:-300}" "$file"
+  done
 }
 
 case "${1:-}" in
@@ -57,6 +116,6 @@ case "${1:-}" in
   stop) stop ;;
   restart) stop; start ;;
   status) status ;;
+  logs) logs "$@" ;;
   *) echo "Usage: $0 {start|stop|restart|status}" >&2; exit 2 ;;
 esac
-
