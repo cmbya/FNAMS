@@ -11,6 +11,7 @@ grep -q '^appname=HermesStudio$' "$ROOT_DIR/apps/hermes-studio/manifest"
 grep -q '^install_dep_apps=HermesAgent>0.1.0$' "$ROOT_DIR/apps/hermes-studio/manifest"
 test -x "$ROOT_DIR/scripts/package-fpk.sh"
 test -x "$ROOT_DIR/scripts/compact-agent-runtime.sh"
+test -x "$ROOT_DIR/apps/hermes-agent/cmd/ensure_runtime"
 if command -v node >/dev/null 2>&1; then
   node --check "$ROOT_DIR/apps/hermes-studio/app/logs/log_server.mjs"
 fi

@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+# Unpack the offline runtime only when fnOS starts the service. This keeps the
+# installation callback short and prevents an unpacking error from rolling the
+# whole FPK installation back without an accessible log.
+app_dest=${TRIM_APPDEST:?TRIM_APPDEST is required}
+pkg_var=${TRIM_PKGVAR:-${app_dest}/var}
+log_dir=${pkg_var}/logs
+install_log=${log_dir}/install.log
+temp_log=${TRIM_TEMP_LOGFILE:-${install_log}}
+app_root=${app_dest}/app
+payload=${app_root}/runtime-payload.tgz
+busybox=${app_root}/tools/busybox
+
+mkdir -p "$log_dir"
+log_msg() {
+  printf '%s [Hermes Agent] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$*" >>"$install_log"
+}
+fail_start() {
+  log_msg "ERROR: $*"
+  printf '%s\n' "Hermes Agent startup failed: $*. Details: ${install_log}" >>"$temp_log" 2>/dev/null || true
+  exit 1
+}
+
+if [ -x "${app_root}/runtime/python/bin/python3" ] && \
+   [ -x "${app_root}/bin/hermes-fnos" ]; then
+  exit 0
+fi
+
+[ -f "$payload" ] || fail_start "runtime payload is missing"
+[ -f "$busybox" ] || fail_start "bundled runtime extractor is missing"
+chmod 0755 "$busybox" || fail_start "unable to enable bundled runtime extractor"
+log_msg "expanding bundled runtime payload on first start"
+"$busybox" tar -xzf "$payload" -C "$app_root" >>"$install_log" 2>&1 || \
+  fail_start "unable to expand bundled runtime payload"
+[ -x "${app_root}/runtime/python/bin/python3" ] || \
+  fail_start "runtime Python was not extracted"
+[ -x "${app_root}/bin/hermes-fnos" ] || \
+  fail_start "Hermes Agent launcher was not extracted"
+rm -f "$payload"
+log_msg "bundled runtime payload expanded successfully"

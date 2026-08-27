@@ -1,8 +1,11 @@
 #!/bin/sh
 set -eu
 
-mkdir -p "${TRIM_PKGETC}" "${TRIM_PKGVAR}/logs"
-install_log=${TRIM_PKGVAR}/logs/install.log
+app_dest=${TRIM_APPDEST:?TRIM_APPDEST is required}
+pkg_etc=${TRIM_PKGETC:?TRIM_PKGETC is required}
+pkg_var=${TRIM_PKGVAR:?TRIM_PKGVAR is required}
+mkdir -p "$pkg_etc" "$pkg_var/logs"
+install_log=$pkg_var/logs/install.log
 log_msg() {
   printf '%s [Hermes Agent] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$*" >>"$install_log"
 }
@@ -15,40 +18,15 @@ fail_install() {
   exit 1
 }
 
-app_root=${TRIM_APPDEST:?TRIM_APPDEST is required}/app
-payload=${app_root}/runtime-payload.tgz
-busybox=${app_root}/tools/busybox
 log_msg "install_callback started"
 
-# This payload is deliberately a single file in app.tgz. It avoids fnOS
-# extracting the full Python/Chromium tree itself, while keeping it offline.
-if [ -f "$payload" ]; then
-  [ -f "$busybox" ] || fail_install "bundled runtime extractor is missing"
-  # Some fnOS extraction paths reset executable bits. Restore the known mode
-  # before invoking the bundled static binary.
-  chmod 0755 "$busybox" || fail_install "unable to enable bundled runtime extractor"
-  log_msg "expanding bundled runtime payload"
-  "$busybox" tar -xzf "$payload" -C "$app_root" >>"$install_log" 2>&1 || \
-    fail_install "unable to expand bundled runtime payload"
-  [ -x "${app_root}/runtime/python/bin/python3" ] || \
-    fail_install "runtime Python was not extracted"
-  [ -x "${app_root}/bin/hermes-fnos" ] || \
-    fail_install "Hermes Agent launcher was not extracted"
-  rm -f "$payload"
-  log_msg "bundled runtime payload expanded successfully"
-else
-  [ -x "${app_root}/runtime/python/bin/python3" ] || \
-    fail_install "runtime payload is missing and no installed runtime was found"
-  log_msg "runtime payload already expanded"
-fi
-
 # Keep the user's configured directories during an upgrade.
-if [ -f "${TRIM_PKGETC}/app.env" ]; then
+if [ -f "${pkg_etc}/app.env" ]; then
   log_msg "keeping existing configuration"
   exit 0
 fi
 
-home=/var/apps/HermesAgent/share/data
+home=${TRIM_PKGHOME:-${pkg_var}/home}
 if [ -n "${TRIM_DATA_SHARE_PATHS:-}" ]; then
   candidate=${TRIM_DATA_SHARE_PATHS%%:*}
   [ -d "$candidate" ] && home=$candidate
@@ -62,6 +40,6 @@ umask 077
   printf 'HERMES_HOME=%s\n' "$home"
   printf 'WORKSPACE_DIR=%s\n' "$workspace"
   printf 'HERMES_GATEWAY_PORT=8642\n'
-} >"${TRIM_PKGETC}/app.env"
+} >"${pkg_etc}/app.env"
 mkdir -p "$home"
 log_msg "configured home=${home} workspace=${workspace:-<not-set>} gateway_port=8642"

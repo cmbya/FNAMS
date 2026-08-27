@@ -47,6 +47,7 @@ start() {
     echo 'Hermes Agent is already running'
     exit 0
   fi
+  "$(dirname "$0")/ensure_runtime"
   log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; hermes_home=${HERMES_HOME}; workspace=${WORKSPACE_DIR:-<not-set>}"
   test -x "${APP_ROOT}/app/bin/hermes-fnos"
   umask 077
