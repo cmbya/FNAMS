@@ -54,10 +54,11 @@ for fpk in "${ROOT_DIR}"/dist/*.fpk; do
       echo "Agent bootstrap app.tgz is missing runtime-payload.tgz" | tee -a "$CHECK_LOG" >&2
       exit 1
     }
-    test -x "$tmp/tools/busybox" || {
-      echo "Agent bootstrap app.tgz is missing executable tools/busybox" | tee -a "$CHECK_LOG" >&2
+    test -f "$tmp/tools/busybox" || {
+      echo "Agent bootstrap app.tgz is missing tools/busybox" | tee -a "$CHECK_LOG" >&2
       exit 1
     }
+    chmod 0755 "$tmp/tools/busybox"
     payload="$tmp/runtime-payload.tgz"
     gzip -t "$payload"
     runtime_listing=$(tar -tzf "$payload")

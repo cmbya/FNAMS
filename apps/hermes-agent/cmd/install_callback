@@ -23,7 +23,10 @@ log_msg "install_callback started"
 # This payload is deliberately a single file in app.tgz. It avoids fnOS
 # extracting the full Python/Chromium tree itself, while keeping it offline.
 if [ -f "$payload" ]; then
-  [ -x "$busybox" ] || fail_install "bundled runtime extractor is missing"
+  [ -f "$busybox" ] || fail_install "bundled runtime extractor is missing"
+  # Some fnOS extraction paths reset executable bits. Restore the known mode
+  # before invoking the bundled static binary.
+  chmod 0755 "$busybox" || fail_install "unable to enable bundled runtime extractor"
   log_msg "expanding bundled runtime payload"
   "$busybox" tar -xzf "$payload" -C "$app_root" >>"$install_log" 2>&1 || \
     fail_install "unable to expand bundled runtime payload"
