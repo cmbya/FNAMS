@@ -5,7 +5,7 @@ source "${ROOT_DIR}/versions.lock"
 source "${ROOT_DIR}/build/build.env" 2>/dev/null || true
 source "${ROOT_DIR}/build/upstream.env" 2>/dev/null || true
 SRC_DIR="${ROOT_DIR}/build/upstream/hermes-agent"
-OUT_DIR="${ROOT_DIR}/build/agent-stage/app"
+OUT_DIR="${ROOT_DIR}/build/agent-runtime-tree/app"
 WORK_DIR="${ROOT_DIR}/build/agent-runtime"
 PY_ROOT="${OUT_DIR}/runtime/python"
 CHROME_ROOT="${OUT_DIR}/runtime/chromium"

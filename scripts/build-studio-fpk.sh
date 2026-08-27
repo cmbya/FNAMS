@@ -6,7 +6,7 @@ STAGE="${ROOT_DIR}/build/studio-stage"
 mkdir -p "${ROOT_DIR}/dist"
 rm -rf "$STAGE"
 cp -a "${ROOT_DIR}/apps/hermes-studio/." "$STAGE/"
-cp -a "${ROOT_DIR}/build/studio-stage/app/." "$STAGE/app/"
+cp -a "${ROOT_DIR}/build/studio-runtime-tree/app/." "$STAGE/app/"
 install -d "$STAGE/app/ui/images"
 convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 256x256 "$STAGE/app/ui/images/icon_256.png"
 convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 64x64 "$STAGE/app/ui/images/icon_64.png"
@@ -19,4 +19,3 @@ rm -f "$STAGE"/*.fpk
 fpk=$(find "$STAGE" -maxdepth 1 -type f -name '*.fpk' -print -quit)
 test -n "$fpk"
 mv "$fpk" "${ROOT_DIR}/dist/HermesStudio-${FPK_VERSION}-fnOS-x86_64.fpk"
-

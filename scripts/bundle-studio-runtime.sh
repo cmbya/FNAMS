@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "${ROOT_DIR}/versions.lock"
-OUT_DIR="${ROOT_DIR}/build/studio-stage/app"
+OUT_DIR="${ROOT_DIR}/build/studio-runtime-tree/app"
 WORK_DIR="${ROOT_DIR}/build/studio-runtime"
 NODE_URL=${NODE_ARCHIVE_URL:-https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz}
 rm -rf "$WORK_DIR" "${OUT_DIR}/runtime" "${OUT_DIR}/studio"
@@ -13,4 +13,3 @@ cp -a "${ROOT_DIR}/build/upstream/hermes-studio/." "${OUT_DIR}/studio/"
 test -x "${OUT_DIR}/runtime/node/bin/node"
 test -f "${OUT_DIR}/studio/bin/hermes-web-ui.mjs"
 echo 'Studio release and Node runtime bundled.'
-
