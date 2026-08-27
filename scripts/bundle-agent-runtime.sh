@@ -28,7 +28,7 @@ IFS=',' read -r -a extras <<< "$AGENT_EXTRAS"
 extra_args=()
 for extra in "${extras[@]}"; do extra_args+=(--extra "$extra"); done
 uv export --locked --project "$SRC_DIR" --format requirements.txt --no-emit-project "${extra_args[@]}" --output-file "${WORK_DIR}/requirements.txt"
-uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_ROOT" --no-cache --requirement "${WORK_DIR}/requirements.txt"
+uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_ROOT" --no-cache --no-deps --requirement "${WORK_DIR}/requirements.txt"
 HERMES_NIX_BUILD=1 uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_ROOT" --no-cache --no-deps "$SRC_DIR"
 cat >"${OUT_DIR}/bin/hermes-fnos" <<'EOF'
 #!/bin/sh
