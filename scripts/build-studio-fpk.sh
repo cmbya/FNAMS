@@ -17,7 +17,7 @@ FNPACK=${FNPACK:-}
 if [ -z "$FNPACK" ]; then FNPACK=$(command -v fnpack || true); fi
 test -n "$FNPACK" || { echo 'fnpack is required.' >&2; exit 1; }
 rm -f "$STAGE"/*.fpk
-"$FNPACK" build --directory "$STAGE"
+(cd "$STAGE" && "$FNPACK" build --directory "$STAGE")
 fpk=$(find "$STAGE" -maxdepth 1 -type f -name '*.fpk' -print -quit)
 test -n "$fpk"
 mv "$fpk" "${ROOT_DIR}/dist/HermesStudio-${FPK_VERSION}-fnOS-x86_64.fpk"
