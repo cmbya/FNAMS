@@ -9,6 +9,12 @@
         }
       }
     ]
+  },
+  "usr-local-linker": {
+    "bin": [
+      "bin/hermes-fnos",
+      "bin/hermes-python-fnos",
+      "bin/hermes-uv-fnos"
+    ]
   }
 }
-

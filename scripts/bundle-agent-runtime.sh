@@ -33,7 +33,7 @@ HERMES_NIX_BUILD=1 uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_
 cat >"${OUT_DIR}/bin/hermes-fnos" <<'EOF'
 #!/bin/sh
 set -eu
-ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}/app
+ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
 PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
@@ -43,7 +43,7 @@ EOF
 cat >"${OUT_DIR}/bin/hermes-python-fnos" <<'EOF'
 #!/bin/sh
 set -eu
-ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}/app
+ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
 PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
@@ -52,7 +52,7 @@ EOF
 cat >"${OUT_DIR}/bin/hermes-uv-fnos" <<'EOF'
 #!/bin/sh
 set -eu
-exec "${TRIM_APPDEST:?TRIM_APPDEST is required}/app/bin/uv" "$@"
+exec "${TRIM_APPDEST:?TRIM_APPDEST is required}/bin/uv" "$@"
 EOF
 chmod 0755 "${OUT_DIR}/bin/hermes-fnos" "${OUT_DIR}/bin/hermes-python-fnos" "${OUT_DIR}/bin/hermes-uv-fnos"
 curl --fail --location --retry 3 --output "$WORK_DIR/chromium.zip" "$CHROME_URL"

@@ -8,7 +8,7 @@ fi
 APP_ROOT=${TRIM_APPDEST:?TRIM_APPDEST is required}
 PKG_VAR=${TRIM_PKGVAR:-${APP_ROOT}/var}
 PKG_TMP=${TRIM_PKGTMP:-${PKG_VAR}/tmp}
-RUNTIME_PY=${APP_ROOT}/app/runtime/python
+RUNTIME_PY=${APP_ROOT}/runtime/python
 PYTHON_BIN=${RUNTIME_PY}/bin/python3
 HERMES_HOME=${HERMES_HOME:-${TRIM_PKGHOME:-${PKG_VAR}/home}}
 WORKSPACE_DIR=${WORKSPACE_DIR:-}
@@ -20,14 +20,14 @@ BROWSER_LOG=${BROWSER_LOG:-${LOG_DIR}/browser.log}
 VIEWER_LOG=${VIEWER_LOG:-${LOG_DIR}/log-viewer.log}
 PIDFILE=${PIDFILE:-${PKG_VAR}/hermes-agent.pid}
 VIEWER_PIDFILE=${VIEWER_PIDFILE:-${PKG_VAR}/hermes-agent-log-viewer.pid}
-VIEWER_SCRIPT=${APP_ROOT}/app/logs/log_server.py
+VIEWER_SCRIPT=${APP_ROOT}/logs/log_server.py
 
 export HERMES_HOME WORKSPACE_DIR
 export PYTHONHOME=${RUNTIME_PY}
 export PYTHONPATH=${RUNTIME_PY}/lib/python${PYTHON_VERSION:-3.11}/site-packages${PYTHONPATH:+:${PYTHONPATH}}
-export PATH=${APP_ROOT}/app/bin:${RUNTIME_PY}/bin:${APP_ROOT}/app/runtime/chromium:${PATH}
+export PATH=${APP_ROOT}/bin:${RUNTIME_PY}/bin:${APP_ROOT}/runtime/chromium:${PATH}
 export HERMES_GATEWAY_PORT=${HERMES_GATEWAY_PORT:-8642}
-export CHROME_BIN=${CHROME_BIN:-${APP_ROOT}/app/runtime/chromium/chromium}
+export CHROME_BIN=${CHROME_BIN:-${APP_ROOT}/runtime/chromium/chromium}
 export HERMES_LOG_DIR=${LOG_DIR}
 export HERMES_LOG_APP_NAME="Hermes Agent"
 export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8643}

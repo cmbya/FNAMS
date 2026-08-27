@@ -9,7 +9,7 @@ pkg_var=${TRIM_PKGVAR:-${app_dest}/var}
 log_dir=${pkg_var}/logs
 install_log=${log_dir}/install.log
 temp_log=${TRIM_TEMP_LOGFILE:-${install_log}}
-app_root=${app_dest}/app
+app_root=${app_dest}
 payload=${app_root}/runtime-payload.tgz
 busybox=${app_root}/tools/busybox
 

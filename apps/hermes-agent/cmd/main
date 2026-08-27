@@ -49,10 +49,10 @@ start() {
   fi
   "$(dirname "$0")/ensure_runtime"
   log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; hermes_home=${HERMES_HOME}; workspace=${WORKSPACE_DIR:-<not-set>}"
-  test -x "${APP_ROOT}/app/bin/hermes-fnos"
+  test -x "${APP_ROOT}/bin/hermes-fnos"
   umask 077
   start_viewer
-  setsid "${APP_ROOT}/app/bin/hermes-fnos" gateway start >>"${AGENT_LOG}" 2>&1 &
+  setsid "${APP_ROOT}/bin/hermes-fnos" gateway start >>"${AGENT_LOG}" 2>&1 &
   echo $! >"${PIDFILE}"
   sleep 2
   if ! is_running; then
