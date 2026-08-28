@@ -61,6 +61,24 @@ fi
 
 if [ -n "$AGENT_HOME" ]; then export HERMES_HOME=$AGENT_HOME; else unset HERMES_HOME 2>/dev/null || true; fi
 
+# The bundled Agent runtime installs run_agent.py into Python's
+# site-packages directory rather than directly below @appcenter/HermesAgent.
+# Hermes Studio's upstream bridge resolver needs that directory as
+# HERMES_AGENT_ROOT; without it the bridge exits before creating its IPC
+# socket with "run_agent.py not found".
+if [ -z "${HERMES_AGENT_ROOT:-}" ] && [ -n "${AGENT_APP_ROOT:-}" ]; then
+  for agent_root_candidate in \
+    "${AGENT_APP_ROOT}/runtime/python/lib/python3.11/site-packages" \
+    "${AGENT_APP_ROOT}/runtime/python/lib/python3.12/site-packages" \
+    "${AGENT_APP_ROOT}/runtime/python/lib/python3.13/site-packages" \
+    "${AGENT_APP_ROOT}"; do
+    if [ -f "${agent_root_candidate}/run_agent.py" ]; then
+      HERMES_AGENT_ROOT=${agent_root_candidate}
+      break
+    fi
+  done
+fi
+
 # A package upgrade can leave @appdata/HermesStudio owned by the previous
 # package user.  Keep the app usable in that situation by placing Studio's
 # private state below the already shared Agent home.  This does not change
@@ -88,6 +106,11 @@ if [ -n "$STUDIO_RUNTIME_ROOT" ]; then
 fi
 
 export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
+if [ -n "${HERMES_AGENT_ROOT:-}" ]; then
+  export HERMES_AGENT_ROOT
+else
+  unset HERMES_AGENT_ROOT 2>/dev/null || true
+fi
 HERMES_AGENT_BRIDGE_PYTHON_REAL=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
 HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
 if [ -x "${APP_ROOT}/bin/hermes-studio-bridge-python" ]; then
