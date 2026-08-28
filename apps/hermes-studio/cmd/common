@@ -22,8 +22,32 @@ VIEWER_SCRIPT=${APP_ROOT}/logs/log_server.mjs
 WEB_UI_HOME=${HERMES_WEB_UI_HOME:-${PKG_VAR}/web-ui}
 AGENT_HOME=${AGENT_HOME:-}
 
-# HermesAgent writes a small world-readable path file beside its launcher.
-# This avoids assuming the unavailable /var/apps/HermesAgent/share/data path.
+# fnOS keeps both application roots and application shares beneath the same
+# volume.  The real paths observed on fnOS 1.2 are, for example,
+# /vol2/@appcenter/HermesStudio and /vol2/@appshare/HermesAgent/data.
+# Deriving from this application's root works even when /var/apps and the
+# usr-local linker are unavailable to package users.
+FNOS_VOLUME=$(CDPATH= cd -- "$(dirname -- "$APP_ROOT")/.." 2>/dev/null && pwd || true)
+AGENT_APP_ROOT=${FNOS_VOLUME:+${FNOS_VOLUME}/@appcenter/HermesAgent}
+AGENT_SHARE_HOME=${FNOS_VOLUME:+${FNOS_VOLUME}/@appshare/HermesAgent/data}
+if [ -n "$AGENT_SHARE_HOME" ] && [ -d "$AGENT_SHARE_HOME" ]; then
+  AGENT_HOME=$AGENT_SHARE_HOME
+fi
+
+# Prefer the actual Agent package launchers. Their wrappers locate the Agent
+# runtime even though TRIM_APPDEST belongs to Hermes Studio at this point.
+if [ -z "${HERMES_BIN:-}" ] && [ -n "$AGENT_APP_ROOT" ] && [ -x "$AGENT_APP_ROOT/bin/hermes-fnos" ]; then
+  HERMES_BIN=$AGENT_APP_ROOT/bin/hermes-fnos
+fi
+if [ -z "${HERMES_AGENT_BRIDGE_PYTHON:-}" ] && [ -n "$AGENT_APP_ROOT" ] && [ -x "$AGENT_APP_ROOT/bin/hermes-python-fnos" ]; then
+  HERMES_AGENT_BRIDGE_PYTHON=$AGENT_APP_ROOT/bin/hermes-python-fnos
+fi
+if [ -z "${HERMES_AGENT_BRIDGE_UV:-}" ] && [ -n "$AGENT_APP_ROOT" ] && [ -x "$AGENT_APP_ROOT/bin/hermes-uv-fnos" ]; then
+  HERMES_AGENT_BRIDGE_UV=$AGENT_APP_ROOT/bin/hermes-uv-fnos
+fi
+
+# Older installations may not use the standard sibling paths. Fall back to
+# Agent metadata beside the resolved launcher when it is available.
 agent_launcher=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
 agent_launcher_real=$(readlink -f "$agent_launcher" 2>/dev/null || true)
 if [ -n "$agent_launcher_real" ]; then
@@ -31,7 +55,7 @@ if [ -n "$agent_launcher_real" ]; then
   agent_metadata=${agent_root:+${agent_root}/.hermes-agent-fnos.env}
   if [ -n "${agent_metadata:-}" ] && [ -r "$agent_metadata" ]; then
     . "$agent_metadata"
-    AGENT_HOME=${HERMES_HOME:-$AGENT_HOME}
+    [ -n "$AGENT_HOME" ] || AGENT_HOME=${HERMES_HOME:-}
   fi
 fi
 

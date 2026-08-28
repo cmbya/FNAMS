@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/build-both-request'
+      - '.github/build-studio-request'
   workflow_dispatch:
     inputs:
       target:
@@ -32,6 +33,23 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - name: Determine build target
+        id: target
+        run: |
+          target="${{ inputs.target || '' }}"
+          if [ -z "$target" ]; then
+            changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
+            if printf '%s\n' "$changed" | grep -qx '.github/build-studio-request'; then
+              target=studio
+            elif printf '%s\n' "$changed" | grep -qx '.github/build-both-request'; then
+              target=both
+            else
+              echo 'No explicit build target request found.' >&2
+              exit 2
+            fi
+          fi
+          case "$target" in agent|studio|both) ;; *) echo "Invalid target: $target" >&2; exit 2 ;; esac
+          echo "target=$target" >> "$GITHUB_OUTPUT"
       - name: Install build tools
         run: |
           sudo apt-get update
@@ -44,19 +62,19 @@ jobs:
         run: ./tests/static.sh
       - name: Build selected FPK
         env:
-          BUILD_TARGET: ${{ inputs.target || 'both' }}
+          BUILD_TARGET: ${{ steps.target.outputs.target }}
           USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
         run: ./scripts/build-release.sh
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hermes-${{ inputs.target || 'both' }}-fnOS-${{ github.sha }}
+          name: Hermes-${{ steps.target.outputs.target }}-fnOS-${{ github.sha }}
           path: dist/
       - name: Create or update Release
         run: |
           source versions.lock
           PACKAGE_VERSION="$FPK_VERSION"
-          target="${{ inputs.target || 'both' }}"
+          target="${{ steps.target.outputs.target }}"
           case "$target" in
             agent) tag="agent-v${PACKAGE_VERSION}"; title="Hermes Agent fnOS ${PACKAGE_VERSION}"; notes="Hermes Agent 单独构建包。目标平台：fnOS 1.2 x86_64。" ;;
             studio) tag="studio-v${PACKAGE_VERSION}"; title="Hermes Studio fnOS ${PACKAGE_VERSION}"; notes="Hermes Studio 单独构建包；需已安装 Hermes Agent。目标平台：fnOS 1.2 x86_64。" ;;

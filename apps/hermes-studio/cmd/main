@@ -37,11 +37,11 @@ start() {
     echo 'Hermes Studio is already running'
     exit 0
   fi
-  log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; agent_home=${HERMES_HOME:-<unresolved>}; gateway_url=${HERMES_GATEWAY_URL}"
+  log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; agent_root=${AGENT_APP_ROOT:-<unresolved>}; agent_home=${HERMES_HOME:-<unresolved>}; gateway_url=${HERMES_GATEWAY_URL}"
   test -x "$NODE"
   test -f "$STUDIO_ENTRY"
-  test -x /usr/local/bin/hermes-fnos
-  test -x /usr/local/bin/hermes-python-fnos
+  test -x "$HERMES_BIN"
+  test -x "$HERMES_AGENT_BRIDGE_PYTHON"
   umask 077
   start_viewer
   # `start` daemonizes and exits, which makes fnOS report a false startup
