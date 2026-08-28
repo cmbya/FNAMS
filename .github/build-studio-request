@@ -1,1 +1,1 @@
-0.1.14: Studio-only build after fixing Agent Bridge runtime-root discovery.
+0.1.15: Studio-only build after exporting Bridge Python, restoring workspace, and using the browser URL entry.

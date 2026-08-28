@@ -61,6 +61,28 @@ fi
 
 if [ -n "$AGENT_HOME" ]; then export HERMES_HOME=$AGENT_HOME; else unset HERMES_HOME 2>/dev/null || true; fi
 
+# Reuse the Agent's authorized workspace when it is available. Older Agent
+# installs may not have persisted WORKSPACE_DIR; in that case create a private
+# default workspace below the Agent home so Studio can chat immediately while
+# still keeping all user-file access inside an explicit base directory.
+if [ -z "${WORKSPACE_DIR:-}" ] && [ -n "${TRIM_DATA_ACCESSIBLE_PATHS:-}" ]; then
+  WORKSPACE_DIR=${TRIM_DATA_ACCESSIBLE_PATHS%%:*}
+fi
+WORKSPACE_BASE=${WORKSPACE_BASE:-${WORKSPACE_DIR:-}}
+if [ -z "$WORKSPACE_BASE" ] && [ -n "$AGENT_HOME" ]; then
+  workspace_fallback=${AGENT_HOME}/workspace
+  if mkdir -p "$workspace_fallback" 2>/dev/null; then
+    WORKSPACE_BASE=$workspace_fallback
+    WORKSPACE_DIR=$workspace_fallback
+  fi
+fi
+if [ -n "${WORKSPACE_BASE:-}" ]; then
+  export WORKSPACE_BASE
+  export WORKSPACE_DIR=${WORKSPACE_DIR:-$WORKSPACE_BASE}
+else
+  unset WORKSPACE_BASE WORKSPACE_DIR 2>/dev/null || true
+fi
+
 # The bundled Agent runtime installs run_agent.py into Python's
 # site-packages directory rather than directly below @appcenter/HermesAgent.
 # Hermes Studio's upstream bridge resolver needs that directory as
@@ -116,6 +138,7 @@ HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
 if [ -x "${APP_ROOT}/bin/hermes-studio-bridge-python" ]; then
   HERMES_AGENT_BRIDGE_PYTHON=${APP_ROOT}/bin/hermes-studio-bridge-python
 fi
+export HERMES_AGENT_BRIDGE_PYTHON
 export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
 export HERMES_AGENT_BRIDGE_PYTHON_REAL
 export HERMES_AGENT_BRIDGE_ENDPOINT=${HERMES_AGENT_BRIDGE_ENDPOINT:-ipc://${PKG_TMP}/hermes-agent-bridge.sock}

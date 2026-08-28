@@ -12,7 +12,7 @@
 构建机必须是 Linux `x86_64`，且能访问 GitHub、Node.js、Python standalone 和 Chrome for Testing 下载地址。
 
 ```bash
-export FPK_VERSION=0.1.14
+export FPK_VERSION=0.1.15
 ./scripts/build-release.sh
 ```
 
@@ -22,7 +22,7 @@ export FPK_VERSION=0.1.14
 
 1. 安装 `HermesAgent-0.1.9-fnOS-x86_64.fpk`。
 2. 在 Agent 配置中选择一个 fnOS 授权目录，并配置模型/API 和消息平台。
-3. 安装 `HermesStudio-0.1.14-fnOS-x86_64.fpk`。
+3. 安装 `HermesStudio-0.1.15-fnOS-x86_64.fpk`。
 4. 从 fnOS 应用中心打开 Hermes Studio。
 
 Studio 依赖 Agent。若 Agent 没有安装、没有启动或共享目录权限不正确，Studio 会显示明确的修复提示。
@@ -40,7 +40,7 @@ Hermes Agent 使用“小安装层”封装：fnOS 直接解压的 `app.tgz` 只
 
 ## 版本与 Release
 
-- 包版本从 `0.1.0` 开始，当前安装兼容性修复版本为 Agent `0.1.9`、Studio `0.1.14`，由 `FPK_VERSION` 控制。
+- 包版本从 `0.1.0` 开始，当前安装兼容性修复版本为 Agent `0.1.9`、Studio `0.1.15`，由 `FPK_VERSION` 控制。
 - 上游只读取 Hermes Agent 和 Hermes Studio 的正式 Release，不使用 prerelease、branch 或未发布 commit。
 - `.github/workflows/build-release.yml` 只接受手动触发。必须选择 `agent`、`studio` 或 `both`；默认仅构建 Agent，避免无关应用被重复打包。
 - `.github/workflows/check-upstream-release.yml` 每天检查正式 Release；发现 Agent 或 Studio 更新时，只触发对应应用的构建。仅在明确选择 `both` 时才构建双 FPK。
