@@ -38,10 +38,26 @@ start() {
     exit 0
   fi
   log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; agent_root=${AGENT_APP_ROOT:-<unresolved>}; agent_home=${HERMES_HOME:-<unresolved>}; gateway_url=${HERMES_GATEWAY_URL}"
+  log_runtime_identity
   test -x "$NODE"
   test -f "$STUDIO_ENTRY"
   test -x "$HERMES_BIN"
   test -x "$HERMES_AGENT_BRIDGE_PYTHON"
+  if [ -z "${HERMES_HOME:-}" ] || [ ! -d "$HERMES_HOME" ]; then
+    log_msg "studio preflight failed: Hermes Agent data directory is missing"
+    echo 'Hermes Agent data directory is missing; start Hermes Agent first.' >&2
+    exit 1
+  fi
+  if [ ! -r "$HERMES_HOME" ] || [ ! -x "$HERMES_HOME" ] || [ ! -w "$HERMES_HOME" ]; then
+    log_msg "studio preflight failed: no rwx access to Hermes Agent data directory"
+    echo 'Hermes Studio cannot access Hermes Agent data; reinstall Studio after Agent.' >&2
+    exit 1
+  fi
+  if [ -d "$HERMES_HOME/skills" ] && { [ ! -r "$HERMES_HOME/skills" ] || [ ! -x "$HERMES_HOME/skills" ] || [ ! -w "$HERMES_HOME/skills" ]; }; then
+    log_msg "studio preflight failed: no rwx access to Hermes Agent skills directory"
+    echo 'Hermes Studio cannot write Hermes Agent skills; reinstall Studio after Agent.' >&2
+    exit 1
+  fi
   umask 077
   start_viewer
   # `start` daemonizes and exits, which makes fnOS report a false startup

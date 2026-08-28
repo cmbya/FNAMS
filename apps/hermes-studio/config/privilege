@@ -2,7 +2,6 @@
   "defaults": {
     "run-as": "package"
   },
-  "username": "hermesstudio",
-  "groupname": "hermesstudio"
+  "username": "hermesagent",
+  "groupname": "hermesagent"
 }
-

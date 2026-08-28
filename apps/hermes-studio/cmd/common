@@ -85,3 +85,10 @@ mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}"
 log_msg() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"
 }
+
+log_runtime_identity() {
+  runtime_user=$(id 2>&1 || true)
+  runtime_paths=$(ls -ld "${APP_ROOT}" "${PKG_VAR}" "${AGENT_HOME:-/nonexistent}" "${AGENT_HOME:-/nonexistent}/skills" 2>&1 || true)
+  log_msg "runtime identity: ${runtime_user}"
+  log_msg "runtime paths: $(printf '%s' "${runtime_paths}" | tr '\n' ';')"
+}
