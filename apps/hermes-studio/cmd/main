@@ -29,6 +29,21 @@ viewer_is_running() {
   kill -0 "$viewer_pid" 2>/dev/null
 }
 
+studio_health_is_ready() {
+  "$NODE" -e 'fetch(process.argv[1]).then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))' \
+    "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1
+}
+
+wait_for_studio_health() {
+  i=0
+  while [ "$i" -lt 60 ]; do
+    if studio_health_is_ready; then return 0; fi
+    sleep 1
+    i=$((i + 1))
+  done
+  return 1
+}
+
 start_viewer() {
   if viewer_is_running; then return 0; fi
   test -f "$VIEWER_SCRIPT"
@@ -78,11 +93,16 @@ start() {
   # failure. Invoke the upstream entry in foreground mode for fnOS to manage.
   setsid "$NODE" "$STUDIO_ENTRY" "$PORT" --no-open >>"$LOGFILE" 2>&1 &
   echo $! >"$PIDFILE"
-  sleep 2
   if ! is_running; then
     log_msg "studio failed to start; inspect studio.log and log-viewer.log"
     stop_viewer
     echo 'Hermes Studio failed to start; check the application log.' >&2
+    exit 1
+  fi
+  if ! wait_for_studio_health; then
+    log_msg "studio failed to become HTTP-ready; inspect studio.log and agent-bridge.log"
+    stop_viewer
+    echo 'Hermes Studio did not become ready; check the application log.' >&2
     exit 1
   fi
   log_msg "studio started; studio_port=${PORT}; log_viewer_port=${HERMES_LOG_VIEWER_PORT}"

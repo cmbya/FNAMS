@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+log_dir=${HERMES_LOG_DIR:-/tmp}
+log_file=${HERMES_AGENT_BRIDGE_LOG:-${log_dir}/agent-bridge.log}
+mkdir -p "$(dirname -- "$log_file")" 2>/dev/null || true
+
+timestamp() {
+  date '+%Y-%m-%d %H:%M:%S%z'
+}
+
+real_python=${HERMES_AGENT_BRIDGE_PYTHON_REAL:-}
+if [ -z "$real_python" ]; then
+  printf '%s [Hermes Studio] ERROR: HERMES_AGENT_BRIDGE_PYTHON_REAL is not configured\n' "$(timestamp)" >>"$log_file" 2>/dev/null || true
+  exit 127
+fi
+if [ ! -x "$real_python" ]; then
+  printf '%s [Hermes Studio] ERROR: bridge Python launcher is not executable: %s\n' "$(timestamp)" "$real_python" >>"$log_file" 2>/dev/null || true
+  exit 127
+fi
+
+printf '%s [Hermes Studio] bridge launcher started; launcher=%s args=%s\n' \
+  "$(timestamp)" "$real_python" "$*" >>"$log_file" 2>/dev/null || true
+exec "$real_python" "$@" >>"$log_file" 2>&1

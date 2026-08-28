@@ -1,1 +1,1 @@
-0.1.12: Studio-only build after adding earliest startup diagnostics and a writable private-state fallback.
+0.1.13: Studio-only build after logging Agent Bridge failures and waiting for WebUI health.

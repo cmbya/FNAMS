@@ -13,5 +13,8 @@ convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 64x64 "$STAGE/app/ui/imag
 convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 256x256 "$STAGE/ICON_256.PNG"
 convert "${ROOT_DIR}/assets/hermes-studio.svg" -resize 64x64 "$STAGE/ICON.PNG"
 chmod 0755 "$STAGE"/cmd/*
+if [ -f "$STAGE/app/bin/hermes-studio-bridge-python" ]; then
+  chmod 0755 "$STAGE/app/bin/hermes-studio-bridge-python"
+fi
 "${ROOT_DIR}/scripts/package-fpk.sh" \
   "$STAGE" "${ROOT_DIR}/dist/HermesStudio-${FPK_VERSION}-fnOS-x86_64.fpk"

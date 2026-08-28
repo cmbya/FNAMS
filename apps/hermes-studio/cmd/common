@@ -88,8 +88,13 @@ if [ -n "$STUDIO_RUNTIME_ROOT" ]; then
 fi
 
 export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
-export HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
+HERMES_AGENT_BRIDGE_PYTHON_REAL=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
+HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
+if [ -x "${APP_ROOT}/bin/hermes-studio-bridge-python" ]; then
+  HERMES_AGENT_BRIDGE_PYTHON=${APP_ROOT}/bin/hermes-studio-bridge-python
+fi
 export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
+export HERMES_AGENT_BRIDGE_PYTHON_REAL
 export HERMES_AGENT_BRIDGE_ENDPOINT=${HERMES_AGENT_BRIDGE_ENDPOINT:-ipc://${PKG_TMP}/hermes-agent-bridge.sock}
 export HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=${HERMES_AGENT_BRIDGE_WORKER_TRANSPORT:-ipc}
 export HERMES_GATEWAY_URL=${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}
@@ -107,6 +112,7 @@ export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8649}
 export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
 export HERMES_WEB_UI_HOME=${WEB_UI_HOME}
 export HERMES_STUDIO_ORIGINAL_PKG_VAR=${ORIGINAL_PKG_VAR}
+export HERMES_AGENT_BRIDGE_LOG=${HERMES_AGENT_BRIDGE_LOG:-${LOG_DIR}/agent-bridge.log}
 
 if ! mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}" 2>/dev/null; then
   startup_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-startup-error.log}
