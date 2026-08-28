@@ -1,7 +1,21 @@
 #!/bin/sh
 set -eu
 
-. "$(dirname "$0")/common"
+MAIN_DIR=$(CDPATH= cd -- "$(dirname "$0")" 2>/dev/null && pwd)
+BOOT_LOG=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-startup-error.log}
+
+boot_log() {
+  printf '%s [Hermes Studio] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$*" >>"$BOOT_LOG" 2>/dev/null || true
+}
+
+boot_identity=$(id 2>&1 || true)
+boot_log "main entered; identity=${boot_identity}; appdest=${TRIM_APPDEST:-<unset>}; pkgvar=${TRIM_PKGVAR:-<unset>}; pkgetc=${TRIM_PKGETC:-<unset>}; trim_username=${TRIM_USERNAME:-<unset>}; trim_run_username=${TRIM_RUN_USERNAME:-<unset>}"
+
+if ! . "$MAIN_DIR/common"; then
+  boot_log "ERROR: common bootstrap failed; appdata=${TRIM_PKGVAR:-<unset>}; temp_log=${BOOT_LOG}"
+  printf '%s [Hermes Studio] Hermes Studio bootstrap failed. Details: %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "$BOOT_LOG" >>"$BOOT_LOG" 2>/dev/null || true
+  exit 1
+fi
 
 is_running() {
   [ -s "$PIDFILE" ] || return 1

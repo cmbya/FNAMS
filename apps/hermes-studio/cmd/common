@@ -60,6 +60,33 @@ if [ -n "$agent_launcher_real" ]; then
 fi
 
 if [ -n "$AGENT_HOME" ]; then export HERMES_HOME=$AGENT_HOME; else unset HERMES_HOME 2>/dev/null || true; fi
+
+# A package upgrade can leave @appdata/HermesStudio owned by the previous
+# package user.  Keep the app usable in that situation by placing Studio's
+# private state below the already shared Agent home.  This does not change
+# the Agent's configuration or workspace; it only provides Studio with a
+# writable place for its own logs, pid files, temporary socket, and web UI
+# database.
+ORIGINAL_PKG_VAR=$PKG_VAR
+STUDIO_RUNTIME_ROOT=
+if [ ! -d "$PKG_VAR" ] || [ ! -r "$PKG_VAR" ] || [ ! -w "$PKG_VAR" ] || [ ! -x "$PKG_VAR" ]; then
+  studio_fallback_root=${AGENT_HOME:+${AGENT_HOME}/.hermes-studio}
+  if [ -n "$studio_fallback_root" ] && mkdir -p "$studio_fallback_root" 2>/dev/null \
+    && [ -r "$studio_fallback_root" ] && [ -w "$studio_fallback_root" ] && [ -x "$studio_fallback_root" ]; then
+    STUDIO_RUNTIME_ROOT=$studio_fallback_root
+  fi
+fi
+if [ -n "$STUDIO_RUNTIME_ROOT" ]; then
+  PKG_VAR=$STUDIO_RUNTIME_ROOT
+  PKG_TMP=${PKG_VAR}/tmp
+  LOG_DIR=${PKG_VAR}/logs
+  APP_LOG=${LOG_DIR}/app.log
+  LOGFILE=${LOG_DIR}/studio.log
+  INSTALL_LOG=${LOG_DIR}/install.log
+  VIEWER_LOG=${LOG_DIR}/log-viewer.log
+  WEB_UI_HOME=${PKG_VAR}/web-ui
+fi
+
 export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
 export HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
 export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
@@ -79,8 +106,14 @@ export HERMES_LOG_APP_NAME="Hermes Studio"
 export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8649}
 export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
 export HERMES_WEB_UI_HOME=${WEB_UI_HOME}
+export HERMES_STUDIO_ORIGINAL_PKG_VAR=${ORIGINAL_PKG_VAR}
 
-mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}"
+if ! mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}" 2>/dev/null; then
+  startup_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-startup-error.log}
+  printf '%s [Hermes Studio] ERROR: unable to initialize writable Studio runtime directories; original_pkgvar=%s runtime_root=%s agent_home=%s\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S%z')" "$ORIGINAL_PKG_VAR" "${STUDIO_RUNTIME_ROOT:-<appdata>}" "${AGENT_HOME:-<unresolved>}" >>"$startup_log" 2>/dev/null || true
+  return 1 2>/dev/null || exit 1
+fi
 
 log_msg() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"
@@ -88,7 +121,10 @@ log_msg() {
 
 log_runtime_identity() {
   runtime_user=$(id 2>&1 || true)
-  runtime_paths=$(ls -ld "${APP_ROOT}" "${PKG_VAR}" "${AGENT_HOME:-/nonexistent}" "${AGENT_HOME:-/nonexistent}/skills" 2>&1 || true)
+  runtime_paths=$(ls -ld "${APP_ROOT}" "${ORIGINAL_PKG_VAR}" "${PKG_VAR}" "${AGENT_HOME:-/nonexistent}" "${AGENT_HOME:-/nonexistent}/skills" 2>&1 || true)
   log_msg "runtime identity: ${runtime_user}"
   log_msg "runtime paths: $(printf '%s' "${runtime_paths}" | tr '\n' ';')"
+  if [ -n "${STUDIO_RUNTIME_ROOT}" ]; then
+    log_msg "runtime fallback: original_pkgvar=${ORIGINAL_PKG_VAR}; runtime_root=${STUDIO_RUNTIME_ROOT}"
+  fi
 }

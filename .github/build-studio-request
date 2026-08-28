@@ -1,1 +1,1 @@
-0.1.11: Studio-only build after fixing shared Agent data permissions and startup diagnostics.
+0.1.12: Studio-only build after adding earliest startup diagnostics and a writable private-state fallback.
