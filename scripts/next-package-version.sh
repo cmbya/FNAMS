@@ -15,7 +15,7 @@ if command -v gh >/dev/null 2>&1; then
   repository=${GITHUB_REPOSITORY:-cmbya/FNAMS}
   latest=$(
     gh api "repos/${repository}/releases?per_page=100" --paginate \
-      --jq '.[].tag_name' \
+      --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' \
       2>/dev/null \
       | while IFS= read -r tag; do
           case "$tag" in
