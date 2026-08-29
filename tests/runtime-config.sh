@@ -22,7 +22,11 @@ unset HERMES_HOME WORKSPACE_DIR HERMES_GATEWAY_PORT
 source "$TEST_ROOT/etc/app.env"
 test "$WORKSPACE_DIR" = "$TEST_ROOT/Hermes Workspace"
 test "$HERMES_HOME" = "$TEST_ROOT/home"
-unset HERMES_HOME WORKSPACE_DIR
+test "$API_SERVER_HOST" = "127.0.0.1"
+test "$API_SERVER_PORT" = "8642"
+test "${#API_SERVER_KEY}" -ge 16
+saved_api_server_key=$API_SERVER_KEY
+unset HERMES_HOME WORKSPACE_DIR API_SERVER_KEY
 source "$TEST_ROOT/app/.hermes-agent-fnos.env"
 test "$WORKSPACE_DIR" = "$TEST_ROOT/Hermes Workspace"
 
@@ -32,6 +36,7 @@ TRIM_APPDEST="$TEST_ROOT/app" TRIM_PKGETC="$TEST_ROOT/etc" TRIM_PKGVAR="$TEST_RO
 unset HERMES_HOME WORKSPACE_DIR HERMES_GATEWAY_PORT
 source "$TEST_ROOT/etc/app.env"
 test "$WORKSPACE_DIR" = "$TEST_ROOT/Hermes Workspace"
+test "$API_SERVER_KEY" = "$saved_api_server_key"
 
 # An explicitly empty authorization value clears access.
 TRIM_APPDEST="$TEST_ROOT/app" TRIM_PKGETC="$TEST_ROOT/etc" TRIM_PKGVAR="$TEST_ROOT/var" \
@@ -39,6 +44,7 @@ TRIM_DATA_ACCESSIBLE_PATHS='' "$TEST_ROOT/app/cmd/config_callback"
 unset HERMES_HOME WORKSPACE_DIR HERMES_GATEWAY_PORT
 source "$TEST_ROOT/etc/app.env"
 test -z "$WORKSPACE_DIR"
+test "$API_SERVER_KEY" = "$saved_api_server_key"
 
 # Verify the Studio release patch remains syntactically valid and suppresses
 # only expected client disconnects/title-refinement warnings.
