@@ -19,6 +19,7 @@ grep -q '^install_dep_apps=HermesAgent>0.1.0$' "$ROOT_DIR/apps/hermes-studio/man
 grep -q '^      agent_version:$' "$ROOT_DIR/.github/workflows/build-release.yml"
 grep -q '^      studio_version:$' "$ROOT_DIR/.github/workflows/build-release.yml"
 grep -q 'next-package-version.sh' "$ROOT_DIR/scripts/build-release.sh"
+grep -q 'BUILD_TARGET=\${BUILD_TARGET:-agent}' "$ROOT_DIR/scripts/build-release.sh"
 grep -q 'AGENT_PACKAGE_VERSION' "$ROOT_DIR/scripts/build-agent-fpk.sh"
 grep -q 'STUDIO_PACKAGE_VERSION' "$ROOT_DIR/scripts/build-studio-fpk.sh"
 grep -q 'publish_release agent' "$ROOT_DIR/.github/workflows/build-release.yml"
