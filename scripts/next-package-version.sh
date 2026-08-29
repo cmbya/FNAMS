@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Return the next fnOS package version for one independent application.
 # FNAMS intentionally rolls 0.1.9 to 0.2.0 instead of creating 0.1.10.
-target=$\{1:?target is required: agent or studio\}
-fallback=$\{2:?fallback version is required\}
+target=${1:?target is required: agent or studio}
+fallback=${2:?fallback version is required}
 case "$target" in
   agent|studio) ;;
   *) echo "target must be agent or studio (got: $target)" >&2; exit 2 ;;
