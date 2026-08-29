@@ -14,8 +14,8 @@ latest_tag() {
   local repository=$1
   local candidates
   candidates=$(gh api "repos/${repository}/releases?per_page=100" --paginate \
-    --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')
-  printf '%s\\n' "${candidates%%$'\\n'*}"
+    --jq '([.[] | select(.draft == false and .prerelease == false)] | .[0].tag_name) // empty')
+  printf '%s\n' "${candidates%%$'\n'*}"
 }
 
 release_commit() {
@@ -31,9 +31,9 @@ if [ "$target" = agent ] || [ "$target" = both ]; then
   agent_commit=$(release_commit NousResearch/hermes-agent "$agent_tag")
   test -n "$agent_commit"
   {
-    printf 'HERMES_AGENT_TAG=%s\\n' "$agent_tag"
-    printf 'HERMES_AGENT_VERSION=%s\\n' "${agent_tag#v}"
-    printf 'HERMES_AGENT_COMMIT=%s\\n' "$agent_commit"
+    printf 'HERMES_AGENT_TAG=%s\n' "$agent_tag"
+    printf 'HERMES_AGENT_VERSION=%s\n' "${agent_tag#v}"
+    printf 'HERMES_AGENT_COMMIT=%s\n' "$agent_commit"
   } >> "${ROOT_DIR}/build/upstream.env"
 fi
 
@@ -43,9 +43,9 @@ if [ "$target" = studio ] || [ "$target" = both ]; then
   studio_commit=$(release_commit EKKOLearnAI/hermes-studio "$studio_tag")
   test -n "$studio_commit"
   {
-    printf 'HERMES_STUDIO_TAG=%s\\n' "$studio_tag"
-    printf 'HERMES_STUDIO_VERSION=%s\\n' "${studio_tag#v}"
-    printf 'HERMES_STUDIO_COMMIT=%s\\n' "$studio_commit"
+    printf 'HERMES_STUDIO_TAG=%s\n' "$studio_tag"
+    printf 'HERMES_STUDIO_VERSION=%s\n' "${studio_tag#v}"
+    printf 'HERMES_STUDIO_COMMIT=%s\n' "$studio_commit"
   } >> "${ROOT_DIR}/build/upstream.env"
 fi
 
