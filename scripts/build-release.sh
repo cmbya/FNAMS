@@ -15,7 +15,7 @@ esac
 
 validate_package_version() {
   local version=$1
-  if [[ ! "$version" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
     echo "Package version must look like 0.1.17 (got: $version)" >&2
     exit 2
   fi
@@ -27,7 +27,7 @@ resolve_package_version() {
   local fallback=$3
   if [ -n "$requested" ]; then
     validate_package_version "$requested"
-    printf '%s\\n' "$requested"
+    printf '%s\n' "$requested"
   else
     bash "${ROOT_DIR}/scripts/next-package-version.sh" "$target" "$fallback"
   fi
@@ -47,8 +47,8 @@ export STUDIO_PACKAGE_VERSION="$studio_package_version"
 
 mkdir -p build dist
 rm -rf build/agent-stage build/studio-stage build/agent-runtime-tree build/studio-runtime-tree build/upstream build/agent-runtime build/studio-runtime
-rm -f dist/*.fpk dist/*.sha256 dist/SHA256SUMS dist/build-manifest.json
-printf 'AGENT_EXTRAS=%s\\n' "${AGENT_EXTRAS:-all,messaging,matrix,slack,dingtalk,feishu,wecom,teams,anthropic,exa,firecrawl,parallel-web,fal,modal,daytona,vercel,hindsight,bedrock,vertex,azure-identity,youtube}" > build/build.env
+rm -f build/upstream.env dist/*.fpk dist/*.sha256 dist/SHA256SUMS dist/build-manifest.json
+printf 'AGENT_EXTRAS=%s\n' "${AGENT_EXTRAS:-all,messaging,matrix,slack,dingtalk,feishu,wecom,teams,anthropic,exa,firecrawl,parallel-web,fal,modal,daytona,vercel,hindsight,bedrock,vertex,azure-identity,youtube}" > build/build.env
 
 if [ "${USE_LATEST_RELEASES:-0}" = 1 ]; then
   BUILD_TARGET="$BUILD_TARGET" ./scripts/resolve-releases.sh
