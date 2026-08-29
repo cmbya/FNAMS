@@ -106,6 +106,31 @@ jobs:
           agent_version=$(jq -r '.package_versions.agent // empty' "$manifest")
           studio_version=$(jq -r '.package_versions.studio // empty' "$manifest")
 
+          ensure_release() {
+            tag=$1
+            title=$2
+            notes=$3
+            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
+            fi
+          }
+
+          upload_asset() {
+            tag=$1
+            asset=$2
+            attempt=1
+            while [ "$attempt" -le 5 ]; do
+              if gh release upload "$tag" "$asset" --clobber --repo "$GITHUB_REPOSITORY"; then
+                return 0
+              fi
+              echo "Release asset upload failed: tag=$tag asset=$asset attempt=$attempt" >&2
+              sleep $((attempt * 5))
+              attempt=$((attempt + 1))
+            done
+            echo "Failed to upload release asset: tag=$tag asset=$asset" >&2
+            return 1
+          }
+
           publish_release() {
             target=$1
             version=$2
@@ -125,14 +150,11 @@ jobs:
               *) echo "Unknown release target: $target" >&2; exit 2 ;;
             esac
             test -s "$asset"
-            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              gh release upload "$tag" "$asset" dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log --clobber --repo "$GITHUB_REPOSITORY"
-            else
-              gh release create "$tag" "$asset" dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log \
-                --repo "$GITHUB_REPOSITORY" \
-                --title "$title" \
-                --notes "$notes"
-            fi
+            ensure_release "$tag" "$title" "$notes"
+            upload_asset "$tag" "$asset"
+            upload_asset "$tag" dist/SHA256SUMS
+            upload_asset "$tag" dist/build-manifest.json
+            upload_asset "$tag" dist/fpk-payload-check.log
             gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
           }
 
