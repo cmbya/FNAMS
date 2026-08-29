@@ -42,6 +42,43 @@ if [ "$is_discovery" -eq 1 ]; then
 else
   launch_mode=bridge
 fi
+
+# Hermes Studio normally invokes the configured Python launcher with the
+# bridge script as its first argument.  Some v0.7.x startup paths instead
+# treat HERMES_AGENT_BRIDGE_PYTHON as a Python executable and pass only the
+# bridge options.  The Agent launcher then sees --endpoint as a Python option
+# and exits with status 2.  Recover that invocation form by supplying the
+# bundled bridge script; keep -c discovery untouched because it is a real
+# Python one-liner.
+if [ "$is_discovery" -eq 0 ] && [ "$#" -gt 0 ]; then
+  case "$1" in
+    -*)
+      bridge_script=${HERMES_AGENT_BRIDGE_SCRIPT:-}
+      if [ -z "$bridge_script" ]; then
+        wrapper_path=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
+        studio_root=$(CDPATH= cd -- "$(dirname -- "$wrapper_path")/.." 2>/dev/null && pwd || true)
+        for candidate in \
+          "$studio_root/studio/dist/server/agent-bridge/python/hermes_bridge.py" \
+          "$studio_root/studio/packages/server/src/modules/hermes/services/bridge/python/hermes_bridge.py"; do
+          if [ -f "$candidate" ]; then
+            bridge_script=$candidate
+            break
+          fi
+        done
+      fi
+      if [ -n "$bridge_script" ] && [ -f "$bridge_script" ]; then
+        set -- "$bridge_script" "$@"
+        printf '%s [Hermes Studio] bridge script inserted for option-only invocation: %s\n' \
+          "$(timestamp)" "$bridge_script" >>"$log_file" 2>/dev/null || true
+      else
+        printf '%s [Hermes Studio] ERROR: bridge script not found for option-only invocation\n' \
+          "$(timestamp)" >>"$log_file" 2>/dev/null || true
+        exit 127
+      fi
+      ;;
+  esac
+fi
+
 printf '%s [Hermes Studio] bridge launcher started; launcher=%s mode=%s arg_count=%s\n' \
   "$(timestamp)" "$real_python" "$launch_mode" "$#" >>"$log_file" 2>/dev/null || true
 
