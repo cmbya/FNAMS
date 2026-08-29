@@ -27,7 +27,9 @@ def patch_server_bridge_resolver(root: Path) -> None:
     """
     bundle = root / "dist/server/index.js"
     if not bundle.is_file():
-        raise FileNotFoundError(bundle)
+        # The source-level fixture used by runtime-config.sh only contains
+        # the Python bridge files. The release tree has the compiled bundle.
+        return
     replace_once(
         bundle,
         """function jse(t={}){let e=t.hermesHome||Gy(),n=Jsn(t.agentRoot,e),a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON;if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};""",
