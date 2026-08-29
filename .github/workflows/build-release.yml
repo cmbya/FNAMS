@@ -88,10 +88,6 @@ jobs:
           STUDIO_PACKAGE_VERSION: ${{ inputs.studio_version || '' }}
           USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
         run: ./scripts/build-release.sh
-      - name: Persist independent version state
-        env:
-          BUILD_TARGET: ${{ steps.target.outputs.target }}
-        run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -157,6 +153,11 @@ jobs:
             upload_asset "$tag" dist/fpk-payload-check.log
             gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
           }
+
+      - name: Persist independent version state
+        env:
+          BUILD_TARGET: ${{ steps.target.outputs.target }}
+        run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
 
           if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
             publish_release agent "$agent_version"
