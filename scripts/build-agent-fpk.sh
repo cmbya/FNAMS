@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+requested_fpk_version=${AGENT_PACKAGE_VERSION:-${PACKAGE_VERSION:-${FPK_VERSION:-}}}
 source "${ROOT_DIR}/versions.lock"
-FPK_VERSION=${AGENT_PACKAGE_VERSION:-${PACKAGE_VERSION:-${FPK_VERSION:-}}}
+FPK_VERSION=${requested_fpk_version:-${AGENT_PACKAGE_VERSION:-}}
 test -n "$FPK_VERSION"
 STAGE="${ROOT_DIR}/build/agent-stage"
 mkdir -p "${ROOT_DIR}/dist"
