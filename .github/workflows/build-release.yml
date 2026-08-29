@@ -91,7 +91,7 @@ jobs:
       - name: Persist independent version state
         env:
           BUILD_TARGET: ${{ steps.target.outputs.target }}
-        run: ./scripts/update-versions-lock.sh "$BUILD_TARGET"
+        run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
