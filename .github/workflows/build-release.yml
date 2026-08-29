@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Package to build and publish'
+        description: 'Package to build'
         required: true
         default: 'agent'
         type: choice
@@ -18,8 +18,13 @@ on:
           - agent
           - studio
           - both
-      package_version:
-        description: 'FPK package version, for example 0.1.17 (empty = versions.lock)'
+      agent_version:
+        description: 'Agent FPK version (empty = next after latest agent-v release)'
+        required: false
+        default: ''
+        type: string
+      studio_version:
+        description: 'Studio FPK version (empty = next after latest studio-v release)'
         required: false
         default: ''
         type: string
@@ -31,6 +36,12 @@ on:
 
 permissions:
   contents: write
+
+# Agent and Studio remain separate packages. This only serializes publication
+# so two independently triggered builds cannot race while updating versions.lock.
+concurrency:
+  group: hermes-fpk-publish
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -47,11 +58,11 @@ jobs:
           target="${{ inputs.target || '' }}"
           if [ -z "$target" ]; then
             changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
-            if printf '%s\n' "$changed" | grep -qx '.github/build-both-request'; then
+            if printf '%s\\n' "$changed" | grep -qx '.github/build-both-request'; then
               target=both
-            elif printf '%s\n' "$changed" | grep -qx '.github/build-studio-request'; then
+            elif printf '%s\\n' "$changed" | grep -qx '.github/build-studio-request'; then
               target=studio
-            elif printf '%s\n' "$changed" | grep -qx '.github/build-agent-request'; then
+            elif printf '%s\\n' "$changed" | grep -qx '.github/build-agent-request'; then
               target=agent
             else
               echo 'No explicit build target request found.' >&2
@@ -73,33 +84,61 @@ jobs:
       - name: Build selected FPK
         env:
           BUILD_TARGET: ${{ steps.target.outputs.target }}
-          PACKAGE_VERSION: ${{ inputs.package_version || '' }}
+          AGENT_PACKAGE_VERSION: ${{ inputs.agent_version || '' }}
+          STUDIO_PACKAGE_VERSION: ${{ inputs.studio_version || '' }}
           USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
         run: ./scripts/build-release.sh
+      - name: Persist independent version state
+        env:
+          BUILD_TARGET: ${{ steps.target.outputs.target }}
+        run: ./scripts/update-versions-lock.sh "$BUILD_TARGET"
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: Hermes-${{ steps.target.outputs.target }}-fnOS-${{ github.sha }}
           path: dist/
-      - name: Create or update Release
+      - name: Create or update independent Releases
         env:
-          PACKAGE_VERSION: ${{ inputs.package_version || '' }}
+          BUILD_TARGET: ${{ steps.target.outputs.target }}
         run: |
-          source versions.lock
-          PACKAGE_VERSION="${PACKAGE_VERSION:-$FPK_VERSION}"
-          target="${{ steps.target.outputs.target }}"
-          case "$target" in
-            agent) tag="agent-v${PACKAGE_VERSION}"; title="Hermes Agent fnOS ${PACKAGE_VERSION}"; notes="Hermes Agent 单独构建包。目标平台：fnOS 1.2 x86_64。" ;;
-            studio) tag="studio-v${PACKAGE_VERSION}"; title="Hermes Studio fnOS ${PACKAGE_VERSION}"; notes="Hermes Studio 单独构建包；需已安装 Hermes Agent。目标平台：fnOS 1.2 x86_64。" ;;
-            both) tag="v${PACKAGE_VERSION}"; title="Hermes Agent + Hermes Studio fnOS ${PACKAGE_VERSION}"; notes="Hermes Agent + Hermes Studio 双 FPK 版本。安装顺序：HermesAgent，然后 HermesStudio。目标平台：fnOS 1.2 x86_64。" ;;
-            *) echo "Unknown target: $target" >&2; exit 2 ;;
-          esac
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log --clobber --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$tag" dist/*.fpk dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$title" \
-              --notes "$notes"
+          set -eu
+          manifest=dist/build-manifest.json
+          agent_version=$(jq -r '.package_versions.agent // empty' "$manifest")
+          studio_version=$(jq -r '.package_versions.studio // empty' "$manifest")
+
+          publish_release() {
+            target=$1
+            version=$2
+            case "$target" in
+              agent)
+                tag="agent-v${version}"
+                title="Hermes Agent fnOS ${version}"
+                notes="Hermes Agent 独立 FPK。目标平台：fnOS 1.2 x86_64。"
+                asset="dist/HermesAgent-${version}-fnOS-x86_64.fpk"
+                ;;
+              studio)
+                tag="studio-v${version}"
+                title="Hermes Studio fnOS ${version}"
+                notes="Hermes Studio 独立 FPK；需已安装 Hermes Agent。目标平台：fnOS 1.2 x86_64。"
+                asset="dist/HermesStudio-${version}-fnOS-x86_64.fpk"
+                ;;
+              *) echo "Unknown release target: $target" >&2; exit 2 ;;
+            esac
+            test -s "$asset"
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload "$tag" "$asset" dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log --clobber --repo "$GITHUB_REPOSITORY"
+            else
+              gh release create "$tag" "$asset" dist/SHA256SUMS dist/build-manifest.json dist/fpk-payload-check.log \
+                --repo "$GITHUB_REPOSITORY" \
+                --title "$title" \
+                --notes "$notes"
+            fi
+            gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
+          }
+
+          if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
+            publish_release agent "$agent_version"
           fi
-          gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
+          if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then
+            publish_release studio "$studio_version"
+          fi
