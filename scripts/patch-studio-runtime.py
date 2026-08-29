@@ -15,11 +15,32 @@ def replace_once(path: Path, old: str, new: str, label: str) -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+
+def patch_server_bridge_resolver(root: Path) -> None:
+    """Keep fnOS's Agent runtime available after upstream runtime selection.
+
+    Studio v0.7.1 clears HERMES_AGENT_BRIDGE_PYTHON and HERMES_AGENT_ROOT
+    when it detects a user-cli installation.  On fnOS HERMES_BIN is a shell
+    launcher, so the subsequent shebang fallback can incorrectly execute that
+    shell as Python and exit with code 2.  The fnOS-specific variables survive
+    that upstream cleanup and point at the actual Agent runtime.
+    """
+    bundle = root / "dist/server/index.js"
+    if not bundle.is_file():
+        raise FileNotFoundError(bundle)
+    replace_once(
+        bundle,
+        """function jse(t={}){let e=t.hermesHome||Gy(),n=Jsn(t.agentRoot,e),a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON;if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};""",
+        """function jse(t={}){let e=t.hermesHome||Gy(),n=Jsn(t.agentRoot||process.env.HERMES_AGENT_ROOT_FNOS,e),a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON||process.env.HERMES_AGENT_BRIDGE_PYTHON_FNOS;if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};""",
+        "fnos-agent-runtime-fallback",
+    )
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} STUDIO_ROOT", file=sys.stderr)
         return 2
     root = Path(sys.argv[1]).resolve()
+    patch_server_bridge_resolver(root)
     python_roots = [
         root / "dist/server/agent-bridge/python",
         root / "packages/server/src/services/hermes/agent-bridge/python",
