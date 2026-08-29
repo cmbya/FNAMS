@@ -15,16 +15,58 @@ viewer_is_running() {
   kill -0 "$viewer_pid" 2>/dev/null
 }
 
-gateway_health_is_ready() {
-  "$PYTHON_BIN" - "http://127.0.0.1:${HERMES_GATEWAY_PORT}/health" <<'PY' >/dev/null 2>&1
+gateway_health_probe() {
+  "$PYTHON_BIN" - "$1" <<'PY'
 import json
 import sys
 from urllib.request import urlopen
 
-with urlopen(sys.argv[1], timeout=2) as response:
-    payload = json.load(response)
+try:
+    with urlopen(sys.argv[1], timeout=2) as response:
+        payload = json.load(response)
+except Exception as exc:
+    print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+
 ready = payload.get("status") == "ok" or payload.get("gateway") == "running"
-raise SystemExit(0 if ready else 1)
+if ready:
+    raise SystemExit(0)
+
+print(
+    "unexpected health payload: "
+    + json.dumps(payload, ensure_ascii=False)[:500],
+    file=sys.stderr,
+)
+raise SystemExit(1)
+PY
+}
+
+gateway_health_is_ready() {
+  gateway_health_probe "http://127.0.0.1:${HERMES_GATEWAY_PORT}/health" >/dev/null 2>&1 && return 0
+  gateway_health_probe "http://127.0.0.1:${HERMES_GATEWAY_PORT}/v1/health" >/dev/null 2>&1
+}
+
+gateway_health_diagnose() {
+  "$PYTHON_BIN" - "http://127.0.0.1:${HERMES_GATEWAY_PORT}" <<'PY' >>"$APP_LOG" 2>&1 || true
+import json
+import sys
+from urllib.request import urlopen
+
+base_url = sys.argv[1].rstrip("/")
+healthy = False
+for path in ("/health", "/v1/health"):
+    try:
+        with urlopen(base_url + path, timeout=2) as response:
+            payload = json.load(response)
+    except Exception as exc:
+        print(f"gateway health {path}: {type(exc).__name__}: {exc}", flush=True)
+        continue
+    status = payload.get("status", "<missing>")
+    gateway = payload.get("gateway", "<missing>")
+    print(f"gateway health {path}: status={status} gateway={gateway}", flush=True)
+    healthy = healthy or status == "ok" or gateway == "running"
+if not healthy:
+    print("gateway health diagnosis: no usable health endpoint", flush=True)
 PY
 }
 
@@ -84,6 +126,7 @@ start() {
   setsid "${APP_ROOT}/bin/hermes-fnos" gateway run >>"${AGENT_LOG}" 2>&1 &
   echo $! >"${PIDFILE}"
   if ! wait_for_gateway_health; then
+    gateway_health_diagnose
     log_msg "gateway failed to become healthy; inspect gateway.log and log-viewer.log"
     stop
     echo 'Hermes Agent did not become healthy; check the application log.' >&2
