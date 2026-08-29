@@ -1,1 +1,1 @@
-0.1.17: rebuild Studio after option-only Agent Bridge launcher fix.
+0.1.18: preserve fnOS Agent bridge runtime after upstream user-cli selection; build Studio-only.
