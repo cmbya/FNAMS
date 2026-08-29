@@ -29,7 +29,7 @@ resolve_package_version() {
     validate_package_version "$requested"
     printf '%s\\n' "$requested"
   else
-    "${ROOT_DIR}/scripts/next-package-version.sh" "$target" "$fallback"
+    bash "${ROOT_DIR}/scripts/next-package-version.sh" "$target" "$fallback"
   fi
 }
 
