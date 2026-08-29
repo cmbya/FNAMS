@@ -26,7 +26,7 @@ jobs:
             repository=$1
             candidates=$(gh api "repos/${repository}/releases?per_page=100" --paginate \
               --jq '([.[] | select(.draft == false and .prerelease == false)] | .[0].tag_name) // empty')
-            printf '%s\\n' "${candidates%%$'\\n'*}"
+            printf '%s\n' "${candidates%%$'\n'*}"
           }
 
           latest_agent=$(latest_formal_tag NousResearch/hermes-agent)
