@@ -27,7 +27,22 @@ VIEWER_SCRIPT=${APP_ROOT}/logs/log_server.py
 NODE_ROOT=${APP_ROOT}/runtime/node
 BUNDLED_SKILLS_DIR=${HERMES_BUNDLED_SKILLS:-${RUNTIME_PY}/skills}
 
+# fnOS service accounts do not necessarily have a usable native home (the
+# default may be /home/hermesagent and can reject mkdir()). Hermes' QQ and
+# Telegram adapters acquire machine-local transport locks through XDG state;
+# keep those locks and all XDG-owned runtime state inside the persistent app
+# home. Also provide a real terminal cwd so the upstream gateway does not
+# fall back to the missing service-account home.
+XDG_CONFIG_HOME=${HERMES_HOME}/.config
+XDG_CACHE_HOME=${HERMES_HOME}/.cache
+XDG_DATA_HOME=${HERMES_HOME}/.local/share
+XDG_STATE_HOME=${HERMES_HOME}/.local/state
+HERMES_GATEWAY_LOCK_DIR=${HERMES_HOME}/state/locks
+TERMINAL_CWD=${TERMINAL_CWD:-${WORKSPACE_DIR:-${HERMES_HOME}}}
+
 export HERMES_HOME WORKSPACE_DIR
+export XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
+export HERMES_GATEWAY_LOCK_DIR TERMINAL_CWD
 export PYTHONHOME=${RUNTIME_PY}
 export PYTHONPATH=${RUNTIME_PY}/lib/python${PYTHON_VERSION:-3.11}/site-packages${PYTHONPATH:+:${PYTHONPATH}}
 export PATH=${APP_ROOT}/bin:${RUNTIME_PY}/bin:${NODE_ROOT}/bin:${APP_ROOT}/runtime/chromium:${PATH}
@@ -46,7 +61,9 @@ export HERMES_LOG_APP_NAME="Hermes Agent"
 export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8643}
 export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
 
-mkdir -p "${HERMES_HOME}" "${LOG_DIR}" "${PKG_TMP}"
+mkdir -p "${HERMES_HOME}" "${LOG_DIR}" "${PKG_TMP}" \
+  "${XDG_CONFIG_HOME}" "${XDG_CACHE_HOME}" "${XDG_DATA_HOME}" \
+  "${XDG_STATE_HOME}" "${HERMES_GATEWAY_LOCK_DIR}"
 
 log_msg() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"

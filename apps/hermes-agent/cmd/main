@@ -117,6 +117,7 @@ start() {
   sync_bundled_skills
   configure_browser_backend
   log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; hermes_home=${HERMES_HOME}; workspace=${WORKSPACE_DIR:-<not-set>}"
+  log_msg "runtime state; xdg_state=${XDG_STATE_HOME}; gateway_lock_dir=${HERMES_GATEWAY_LOCK_DIR}; terminal_cwd=${TERMINAL_CWD}"
   log_msg "browser backend=${BROWSER_BACKEND}; cdp=${BROWSER_CDP_URL:-<not-connected>}; fallback_chromium=${AGENT_BROWSER_EXECUTABLE_PATH}"
   test -x "${APP_ROOT}/bin/hermes-fnos"
   umask 077
