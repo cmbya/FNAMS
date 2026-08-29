@@ -104,9 +104,20 @@ for fpk in "${ROOT_DIR}"/dist/*.fpk; do
       echo "Agent runtime payload version marker is missing" | tee -a "$CHECK_LOG" >&2
       exit 1
     }
+    bundled_skills_dir="$unpacked/runtime/python/skills"
+    test -f "$bundled_skills_dir/autonomous-ai-agents/hermes-agent/SKILL.md" || {
+      echo "Agent runtime payload is missing the official hermes-agent skill" | tee -a "$CHECK_LOG" >&2
+      exit 1
+    }
+    bundled_skill_count=$(find "$bundled_skills_dir" -type f -name SKILL.md | wc -l | tr -d ' ')
+    test "$bundled_skill_count" -gt 0 || {
+      echo "Agent runtime payload contains no official bundled skills" | tee -a "$CHECK_LOG" >&2
+      exit 1
+    }
     printf '  Agent runtime payload OK: %s bytes, members %s, version %s\n' \
       "$(stat -c '%s' "$payload")" "$(printf '%s\n' "$runtime_listing" | wc -l)" \
       "$(tr -d '\n' < "$unpacked/runtime/.fnos-runtime-version")" | tee -a "$CHECK_LOG"
+    printf '  Official bundled skills OK: %s SKILL.md files\n' "$bundled_skill_count" | tee -a "$CHECK_LOG"
   fi
   rm -rf "$tmp"
 done

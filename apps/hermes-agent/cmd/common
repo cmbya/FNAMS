@@ -25,11 +25,13 @@ PIDFILE=${PIDFILE:-${PKG_VAR}/hermes-agent.pid}
 VIEWER_PIDFILE=${VIEWER_PIDFILE:-${PKG_VAR}/hermes-agent-log-viewer.pid}
 VIEWER_SCRIPT=${APP_ROOT}/logs/log_server.py
 NODE_ROOT=${APP_ROOT}/runtime/node
+BUNDLED_SKILLS_DIR=${HERMES_BUNDLED_SKILLS:-${RUNTIME_PY}/skills}
 
 export HERMES_HOME WORKSPACE_DIR
 export PYTHONHOME=${RUNTIME_PY}
 export PYTHONPATH=${RUNTIME_PY}/lib/python${PYTHON_VERSION:-3.11}/site-packages${PYTHONPATH:+:${PYTHONPATH}}
 export PATH=${APP_ROOT}/bin:${RUNTIME_PY}/bin:${NODE_ROOT}/bin:${APP_ROOT}/runtime/chromium:${PATH}
+export HERMES_BUNDLED_SKILLS="${BUNDLED_SKILLS_DIR}"
 export HERMES_GATEWAY_PORT=${HERMES_GATEWAY_PORT:-8642}
 API_SERVER_HOST=${API_SERVER_HOST:-127.0.0.1}
 API_SERVER_PORT=${API_SERVER_PORT:-${HERMES_GATEWAY_PORT}}
@@ -48,6 +50,38 @@ mkdir -p "${HERMES_HOME}" "${LOG_DIR}" "${PKG_TMP}"
 
 log_msg() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"
+}
+
+sync_bundled_skills() {
+  # The bundled source is inside the compact runtime payload.  Sync it after
+  # ensure_runtime expands that payload, preserving user-edited and custom
+  # skills according to Hermes' official manifest-based sync rules.
+  if [ ! -f "${BUNDLED_SKILLS_DIR}/autonomous-ai-agents/hermes-agent/SKILL.md" ]; then
+    log_msg "bundled skills source unavailable; skipping skill sync: ${BUNDLED_SKILLS_DIR}"
+    return 0
+  fi
+  if "$PYTHON_BIN" - <<'PY' >>"${APP_LOG}" 2>&1
+import json
+
+from tools.skills_sync import sync_skills
+
+result = sync_skills(quiet=True)
+summary = {
+    "copied": len(result.get("copied", [])),
+    "updated": len(result.get("updated", [])),
+    "skipped": result.get("skipped", 0),
+    "total_bundled": result.get("total_bundled", 0),
+    "user_modified": len(result.get("user_modified", [])),
+}
+print("bundled skill sync result=" + json.dumps(summary, ensure_ascii=False), flush=True)
+if summary["total_bundled"] <= 0:
+    raise SystemExit("official bundled skill source contains no SKILL.md files")
+PY
+  then
+    log_msg "bundled skills synchronized: source=${BUNDLED_SKILLS_DIR} target=${HERMES_HOME}/skills"
+  else
+    log_msg "WARNING: bundled skills sync failed; skill discovery may be incomplete"
+  fi
 }
 
 probe_browser_cdp() {

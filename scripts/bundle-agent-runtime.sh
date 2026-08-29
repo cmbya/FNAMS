@@ -10,12 +10,13 @@ WORK_DIR="${ROOT_DIR}/build/agent-runtime"
 PY_ROOT="${OUT_DIR}/runtime/python"
 NODE_ROOT="${OUT_DIR}/runtime/node"
 CHROME_ROOT="${OUT_DIR}/runtime/chromium"
+BUNDLED_SKILLS_DIR="${PY_ROOT}/skills"
 AGENT_EXTRAS=${AGENT_EXTRAS:-all,messaging,matrix,slack,dingtalk,feishu,wecom,teams,anthropic,exa,firecrawl,parallel-web,fal,modal,daytona,vercel,hindsight,bedrock,vertex,azure-identity,youtube}
 PY_URL=${PYTHON_STANDALONE_ARCHIVE_URL:-https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_BUILD_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_BUILD_DATE}-x86_64-unknown-linux-gnu-install_only.tar.gz}
 CHROME_URL=${CHROMIUM_ARCHIVE_URL:-https://storage.googleapis.com/chrome-for-testing-public/${CHROMIUM_VERSION}/linux64/chrome-linux64.zip}
 NODE_URL=${NODE_ARCHIVE_URL:-https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz}
 rm -rf "$WORK_DIR" "${OUT_DIR}/runtime"
-mkdir -p "$WORK_DIR/python" "$PY_ROOT" "$NODE_ROOT" "$CHROME_ROOT" "${OUT_DIR}/bin"
+mkdir -p "$WORK_DIR/python" "$PY_ROOT" "$NODE_ROOT" "$CHROME_ROOT" "$BUNDLED_SKILLS_DIR" "${OUT_DIR}/bin"
 curl --fail --location --retry 3 --output "$WORK_DIR/python.tar.gz" "$PY_URL"
 tar -xzf "$WORK_DIR/python.tar.gz" --no-same-owner -C "$WORK_DIR/python"
 python_bin=$(find "$WORK_DIR/python" -type f \( -path '*/bin/python3' -o -path '*/bin/python3.*' \) -perm -u+x | sort | head -n1)
@@ -32,6 +33,19 @@ for extra in "${extras[@]}"; do extra_args+=(--extra "$extra"); done
 uv export --locked --project "$SRC_DIR" --format requirements.txt --no-emit-project "${extra_args[@]}" --output-file "${WORK_DIR}/requirements.txt"
 uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_ROOT" --no-cache --no-deps --requirement "${WORK_DIR}/requirements.txt"
 HERMES_NIX_BUILD=1 uv pip install --python "$PY_ROOT/bin/python3" --prefix "$PY_ROOT" --no-cache --no-deps "$SRC_DIR"
+
+# The official skills are repository data, not Python package data.  The
+# upstream wheel intentionally contains Python modules and plugin manifests,
+# but setuptools does not install the top-level skills/ tree.  Copy the
+# bundled skills beside the installed Python modules so the runtime syncer can
+# seed them into HERMES_HOME/skills on first launch.
+test -d "${SRC_DIR}/skills"
+cp -a "${SRC_DIR}/skills/." "$BUNDLED_SKILLS_DIR/"
+test -f "${BUNDLED_SKILLS_DIR}/autonomous-ai-agents/hermes-agent/SKILL.md"
+bundled_skill_count=$(find "$BUNDLED_SKILLS_DIR" -type f -name SKILL.md | wc -l | tr -d ' ')
+test "$bundled_skill_count" -gt 0
+echo "Bundled ${bundled_skill_count} official Hermes skills."
+
 cat >"${OUT_DIR}/bin/hermes-fnos" <<'EOF'
 #!/bin/sh
 set -eu
@@ -52,6 +66,7 @@ PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
 export PATH=${ROOT}/bin:${PY_ROOT}/bin:${ROOT}/runtime/node/bin:${ROOT}/runtime/chromium:${PATH}
+export HERMES_BUNDLED_SKILLS="${HERMES_BUNDLED_SKILLS:-${PY_ROOT}/skills}"
 export AGENT_BROWSER_EXECUTABLE_PATH=${AGENT_BROWSER_EXECUTABLE_PATH:-${ROOT}/runtime/chromium/chromium}
 exec "${PY_ROOT}/bin/python3" "${PY_ROOT}/bin/hermes" "$@"
 EOF
@@ -72,6 +87,7 @@ PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
 export PATH=${ROOT}/bin:${PY_ROOT}/bin:${ROOT}/runtime/node/bin:${ROOT}/runtime/chromium:${PATH}
+export HERMES_BUNDLED_SKILLS="${HERMES_BUNDLED_SKILLS:-${PY_ROOT}/skills}"
 export AGENT_BROWSER_EXECUTABLE_PATH=${AGENT_BROWSER_EXECUTABLE_PATH:-${ROOT}/runtime/chromium/chromium}
 exec "${PY_ROOT}/bin/python3" "$@"
 EOF

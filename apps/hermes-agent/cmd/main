@@ -114,6 +114,7 @@ start() {
     exit 0
   fi
   "$(dirname "$0")/ensure_runtime"
+  sync_bundled_skills
   configure_browser_backend
   log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; hermes_home=${HERMES_HOME}; workspace=${WORKSPACE_DIR:-<not-set>}"
   log_msg "browser backend=${BROWSER_BACKEND}; cdp=${BROWSER_CDP_URL:-<not-connected>}; fallback_chromium=${AGENT_BROWSER_EXECUTABLE_PATH}"
