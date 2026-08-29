@@ -130,8 +130,13 @@ fi
 export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
 if [ -n "${HERMES_AGENT_ROOT:-}" ]; then
   export HERMES_AGENT_ROOT
+  # Upstream Studio v0.7.x clears HERMES_AGENT_ROOT while selecting its
+  # preferred user-cli runtime. Preserve the fnOS-resolved root separately so
+  # the Bridge can still import the Agent runtime afterwards.
+  export HERMES_AGENT_ROOT_FNOS=${HERMES_AGENT_ROOT}
 else
   unset HERMES_AGENT_ROOT 2>/dev/null || true
+  unset HERMES_AGENT_ROOT_FNOS 2>/dev/null || true
 fi
 HERMES_AGENT_BRIDGE_PYTHON_REAL=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
 HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
@@ -141,6 +146,12 @@ fi
 export HERMES_AGENT_BRIDGE_PYTHON
 export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
 export HERMES_AGENT_BRIDGE_PYTHON_REAL
+if [ -x "${HERMES_AGENT_BRIDGE_PYTHON_REAL}" ]; then
+  # This name is deliberately not part of upstream's managed-runtime cleanup.
+  export HERMES_AGENT_BRIDGE_PYTHON_FNOS=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
+else
+  unset HERMES_AGENT_BRIDGE_PYTHON_FNOS 2>/dev/null || true
+fi
 export HERMES_AGENT_BRIDGE_ENDPOINT=${HERMES_AGENT_BRIDGE_ENDPOINT:-ipc://${PKG_TMP}/hermes-agent-bridge.sock}
 export HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=${HERMES_AGENT_BRIDGE_WORKER_TRANSPORT:-ipc}
 export HERMES_GATEWAY_URL=${HERMES_GATEWAY_URL:-http://127.0.0.1:8642}
