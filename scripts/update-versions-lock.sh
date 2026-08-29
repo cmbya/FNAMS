@@ -23,12 +23,12 @@ test "$target" = studio || test -n "$agent_package_version"
 test "$target" = agent || test -n "$studio_package_version"
 
 set_lock_value() {
-  key=$1
-  value=$2
-  if grep -q "^\${key}=" versions.lock; then
-    sed -E -i "s/^\${key}=.*/\${key}=\${value}/" versions.lock
+  local key=$1
+  local value=$2
+  if grep -q "^$key=" versions.lock; then
+    sed -E -i "s/^$key=.*/$key=$value/" versions.lock
   else
-    printf '%s=%s\\n' "$key" "$value" >> versions.lock
+    printf '%s=%s\n' "$key" "$value" >> versions.lock
   fi
 }
 
