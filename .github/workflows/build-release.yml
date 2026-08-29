@@ -154,14 +154,15 @@ jobs:
             gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
           }
 
-      - name: Persist independent version state
-        env:
-          BUILD_TARGET: ${{ steps.target.outputs.target }}
-        run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
-
           if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
             publish_release agent "$agent_version"
           fi
           if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then
             publish_release studio "$studio_version"
           fi
+
+      - name: Persist independent version state
+        env:
+          BUILD_TARGET: ${{ steps.target.outputs.target }}
+        run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
+
