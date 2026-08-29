@@ -1,1 +1,1 @@
-0.1.16: Studio-only build preserving plugin-discovery JSON stdout while retaining Bridge diagnostics.
+0.1.17: rebuild Studio after option-only Agent Bridge launcher fix.
