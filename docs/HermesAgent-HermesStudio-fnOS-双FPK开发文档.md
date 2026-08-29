@@ -9,7 +9,7 @@
 - 使用范围：个人、家庭局域网、单管理员
 - 安装形态：两个 FPK，离线安装；运行依赖全部内置
 - 数据策略：全新配置，不迁移现有 Docker 数据
-- 上游策略：只跟踪正式 Release；GitHub Actions 自动构建，用户手动升级
+- 上游策略：只跟踪正式 Release；每天北京时间 12:10 检查，按 Agent/Studio 独立构建和发布，用户手动安装升级
 - 当前基线：Hermes Agent `v2026.8.19`，Hermes Studio `v0.6.47`
 - 文档日期：2026-08-27
 
@@ -33,7 +33,7 @@
 7. 危险终端命令继续经过 Hermes 原有确认机制；不得因打包绕过审批。
 8. 优先控制 fnOS 应用中心安装的 Chrome；不可发现或不可控制时使用 Agent FPK 内置 Chromium。
 9. 两个 FPK 都不在安装时下载 Python、Node、npm 包、Python 包或浏览器。
-10. 上游正式 Release 发布后自动产出两个独立 FPK、校验和与构建清单。
+10. 上游正式 Release 发布后，只构建发生更新的项目；两个项目都更新时分别构建两个独立 FPK、校验和与构建清单。
 
 ### 2.2 明确不做
 
@@ -414,33 +414,32 @@ CHROMIUM_VERSION=152.0.7977.64
 
 ### 步骤 11：拆分构建流水线
 
-GitHub Actions 顺序：
+构建入口支持按项目选择：
 
-1. 只查询两个上游的正式 Release，不跟踪 branch、commit 推送或 prerelease。
-2. 解析版本并更新临时锁文件。
-3. 构建 Agent 运行时并执行断网测试。
-4. 打包和校验 `HermesAgent-<version>-fnOS-x86_64.fpk`。
-5. 构建 Studio 并执行断网测试。
-6. 打包和校验 `HermesStudio-<version>-fnOS-x86_64.fpk`。
-7. 生成 SHA-256、文件大小、文件数、上游 commit、依赖版本和契约版本清单。
-8. 上传两个独立 artifact；人工确认设备测试后再发布 GitHub Release。
+- `target=agent)：只编译 Hermes Agent。
+- `target=studio)：只编译 Hermes Studio。
+- `target=both`：在一次人工操作中依次执行两个独立构建，并生成两个独立 FPK/Release；它们不会共享包版本，也不会合并为一个 FPK。
+- `agent_version` 与 `studio_version` 分开填写。留空时分别读取对应项目已有的正式 Release 版本并递增；手动输入优先。版本递增遵循 `0.1.8 → 0.1.9 → 0.2.0`，不生成 `0.1.10`。
+- `Resolve the newest formal upstream Releases` 只解析被选中项目的最新正式上游 Release，不使用 prerelease、branch 或普通 commit。
 
-建议输出：
+每天北京时间 12:10（GitHub Actions 的 UTC `04:10`）由检查工作流分别查询 Hermes Agent 与 Hermes Studio。只有 Agent 更新时触发 Agent 构建，只有 Studio 更新时触发 Studio 构建，两个都更新时触发两个独立构建。并发控制只用于防止两个构建同时回写 `versions.lock`，不改变两个项目的独立产物和 Release。
 
-```text
-HermesAgent-0.20.5-fnOS-x86_64.fpk
-HermesStudio-0.6.47-fnOS-x86_64.fpk
-SHA256SUMS
-build-manifest.json
-THIRD_PARTY_LICENSES.txt
-```
+GitHub Actions 每个目标的构建流程：
+
+1. 解析该目标的正式上游 Release 和 commit。
+2. 只下载并构建该目标需要的上游源代码和运行时。
+3. 生成对应的 FPK，并执行解包、checksum、路径和运行时载荷校验。
+4. 生成包含独立包版本、上游版本和集成契约版本的 `build-manifest.json`。
+5. 只回写该目标在 `versions.lock` 中的包版本和上游锁定信息。
+6. 发布目标专属 Release：`agent-vX.Y.Z` 或 `studio-vX.Y.Z`，并只上传对应 FPK。
 
 完成标准：
 
-- 任一包构建失败不会产生“整体成功”的 Release。
-- 两个 FPK 可以独立下载、校验和重建。
-- Release 页面明确安装顺序：Agent → Studio。
-
+- Agent 和 Studio 可分别手动编译、分别升级和分别回滚。
+- 任一目标未被选择时，不下载、不编译、不发布该目标。
+- 两个目标同时构建时，仍得到两个独立 FPK、两个独立版本号和两个独立 Release。
+- 上游没有正式 Release 更新时，定时检查不触发构建。
+- 构建失败时，不发布失败目标的 Release；真机验收仍按第 13 节执行。
 ### 步骤 12：执行静态与解包校验
 
 对每个 FPK 分别检查：
