@@ -26,6 +26,8 @@ grep -q 'agent-browser@${AGENT_BROWSER_VERSION}' "$ROOT_DIR/scripts/bundle-agent
 grep -q -- '--no-same-owner' "$ROOT_DIR/scripts/fetch-upstream.sh"
 grep -q 'ensure_api_server_key' "$ROOT_DIR/apps/hermes-agent/cmd/configuration"
 grep -q 'API_SERVER_KEY=' "$ROOT_DIR/apps/hermes-agent/cmd/configuration"
+grep -q 'export API_SERVER_HOST API_SERVER_PORT' "$ROOT_DIR/apps/hermes-agent/cmd/common"
+grep -q 'export API_SERVER_KEY' "$ROOT_DIR/apps/hermes-agent/cmd/common"
 grep -q 'gateway health diagnosis' "$ROOT_DIR/apps/hermes-agent/cmd/main"
 if command -v node >/dev/null 2>&1; then
   node --check "$ROOT_DIR/apps/hermes-studio/app/logs/log_server.mjs"
