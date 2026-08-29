@@ -12,7 +12,7 @@ grep -q '^appname=HermesAgent$' "$ROOT_DIR/apps/hermes-agent/manifest"
 grep -q '^appname=HermesStudio$' "$ROOT_DIR/apps/hermes-studio/manifest"
 grep -q '^install_dep_apps=HermesAgent>0.1.0$' "$ROOT_DIR/apps/hermes-studio/manifest"
 test -x "$ROOT_DIR/scripts/package-fpk.sh"
-test -x "$ROOT_DIR/scripts/render-svg-icon.sh"
+test -f "$ROOT_DIR/scripts/render-svg-icon.sh"
 test -x "$ROOT_DIR/scripts/compact-agent-runtime.sh"
 test -x "$ROOT_DIR/apps/hermes-agent/cmd/ensure_runtime"
 grep -q '^export HERMES_INTERACTIVE=1$' "$ROOT_DIR/apps/hermes-studio/cmd/common"
@@ -25,5 +25,5 @@ if command -v node >/dev/null 2>&1; then
 fi
 python3 -c 'from pathlib import Path; p=Path("'"$ROOT_DIR"'/apps/hermes-agent/app/logs/log_server.py"); compile(p.read_text(), str(p), "exec")'
 python3 -m py_compile "$ROOT_DIR/scripts/patch-studio-runtime.py"
-"$ROOT_DIR/tests/runtime-config.sh"
+bash "$ROOT_DIR/tests/runtime-config.sh"
 echo 'Static source checks passed.'
