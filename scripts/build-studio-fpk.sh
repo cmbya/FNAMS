@@ -2,11 +2,13 @@
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "${ROOT_DIR}/versions.lock"
+FPK_VERSION=${PACKAGE_VERSION:-$FPK_VERSION}
 STAGE="${ROOT_DIR}/build/studio-stage"
 mkdir -p "${ROOT_DIR}/dist"
 rm -rf "$STAGE"
 cp -a "${ROOT_DIR}/apps/hermes-studio/." "$STAGE/"
 cp -a "${ROOT_DIR}/build/studio-runtime-tree/app/." "$STAGE/app/"
+sed -E -i "0,/^version=.*/s//version=${FPK_VERSION}/" "$STAGE/manifest"
 install -d "$STAGE/app/ui/images"
 bash "${ROOT_DIR}/scripts/render-svg-icon.sh" "${ROOT_DIR}/assets/hermes-studio.svg" 256 "$STAGE/app/ui/images/icon_256.png"
 bash "${ROOT_DIR}/scripts/render-svg-icon.sh" "${ROOT_DIR}/assets/hermes-studio.svg" 64 "$STAGE/app/ui/images/icon_64.png"
