@@ -148,7 +148,8 @@ export GATEWAY_URL=${GATEWAY_URL:-${HERMES_GATEWAY_URL}}
 export HERMES_WEB_UI_MANAGED_GATEWAY=0
 export HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART=1
 export HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=0
-export PATH=${APP_ROOT}/runtime/node/bin:/usr/local/bin:${PATH}
+export HERMES_INTERACTIVE=1
+export PATH=${APP_ROOT}/runtime/node/bin:${AGENT_APP_ROOT:-/nonexistent}/runtime/node/bin:/usr/local/bin:${PATH}
 export NODE_ENV=production
 export BIND_HOST=${BIND_HOST:-0.0.0.0}
 export PORT=${HERMES_STUDIO_PORT:-8648}
@@ -159,6 +160,46 @@ export HERMES_LOG_VIEWER_BIND=${HERMES_LOG_VIEWER_BIND:-0.0.0.0}
 export HERMES_WEB_UI_HOME=${WEB_UI_HOME}
 export HERMES_STUDIO_ORIGINAL_PKG_VAR=${ORIGINAL_PKG_VAR}
 export HERMES_AGENT_BRIDGE_LOG=${HERMES_AGENT_BRIDGE_LOG:-${LOG_DIR}/agent-bridge.log}
+
+probe_browser_cdp() {
+  endpoint=$1
+  "$NODE" -e '
+    const endpoint = process.argv[1].replace(/\/$/, "") + "/json/version";
+    fetch(endpoint, { signal: AbortSignal.timeout(2000) })
+      .then(async response => {
+        if (!response.ok) process.exit(1);
+        const body = await response.json();
+        process.exit(body.webSocketDebuggerUrl ? 0 : 1);
+      })
+      .catch(() => process.exit(1));
+  ' "$endpoint" >/dev/null 2>&1
+}
+
+configure_browser_backend() {
+  configured=${HERMES_BROWSER_CDP_URL:-}
+  if [ -n "${BROWSER_CDP_URL:-}" ]; then configured=$BROWSER_CDP_URL; fi
+  if [ -n "$configured" ]; then
+    candidates=$configured
+  else
+    candidates='http://127.0.0.1:16002 http://172.28.0.1:16003'
+  fi
+  BROWSER_BACKEND=bundled-chromium
+  unset BROWSER_CDP_URL 2>/dev/null || true
+  for candidate in $candidates; do
+    if probe_browser_cdp "$candidate"; then
+      BROWSER_CDP_URL=$candidate
+      BROWSER_BACKEND=external-cdp
+      export BROWSER_CDP_URL
+      break
+    fi
+  done
+  if [ -n "${AGENT_APP_ROOT:-}" ]; then
+    export AGENT_BROWSER_EXECUTABLE_PATH=${AGENT_BROWSER_EXECUTABLE_PATH:-${AGENT_APP_ROOT}/runtime/chromium/chromium}
+  fi
+  export BROWSER_BACKEND
+}
+
+configure_browser_backend
 
 if ! mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}" 2>/dev/null; then
   startup_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-startup-error.log}
@@ -179,4 +220,5 @@ log_runtime_identity() {
   if [ -n "${STUDIO_RUNTIME_ROOT}" ]; then
     log_msg "runtime fallback: original_pkgvar=${ORIGINAL_PKG_VAR}; runtime_root=${STUDIO_RUNTIME_ROOT}"
   fi
+  log_msg "browser backend=${BROWSER_BACKEND}; cdp=${BROWSER_CDP_URL:-<not-connected>}; fallback_chromium=${AGENT_BROWSER_EXECUTABLE_PATH:-<unresolved>}"
 }

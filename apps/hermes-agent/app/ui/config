@@ -3,10 +3,10 @@
     "HermesAgent.main": {
       "title": "Hermes Agent",
       "icon": "images/icon_{0}.png",
-      "type": "iframe",
+      "type": "url",
       "protocol": "http",
-      "port": 8642,
-      "url": "/health",
+      "port": 8643,
+      "url": "/status",
       "allUsers": true
     },
     "HermesAgent.logs": {

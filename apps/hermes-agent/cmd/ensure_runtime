@@ -24,6 +24,9 @@ fail_start() {
 }
 
 if [ -x "${app_root}/runtime/python/bin/python3" ] && \
+   [ -x "${app_root}/runtime/node/bin/node" ] && \
+   [ -x "${app_root}/runtime/node/bin/agent-browser" ] && \
+   [ -x "${app_root}/runtime/chromium/chromium" ] && \
    [ -x "${app_root}/bin/hermes-fnos" ]; then
   exit 0
 fi
@@ -38,5 +41,11 @@ log_msg "expanding bundled runtime payload on first start"
   fail_start "runtime Python was not extracted"
 [ -x "${app_root}/bin/hermes-fnos" ] || \
   fail_start "Hermes Agent launcher was not extracted"
+[ -x "${app_root}/runtime/node/bin/node" ] || \
+  fail_start "runtime Node.js was not extracted"
+[ -x "${app_root}/runtime/node/bin/agent-browser" ] || \
+  fail_start "browser controller was not extracted"
+[ -x "${app_root}/runtime/chromium/chromium" ] || \
+  fail_start "fallback Chromium was not extracted"
 rm -f "$payload"
 log_msg "bundled runtime payload expanded successfully"

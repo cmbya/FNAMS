@@ -1,5 +1,28 @@
 #!/bin/sh
 set -eu
-test -f "${TRIM_PKGETC}/app.env" || exit 0
-mkdir -p "${TRIM_PKGVAR}/logs"
-printf '%s [Hermes Agent] config_callback\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" >>"${TRIM_PKGVAR}/logs/install.log"
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+. "${SCRIPT_DIR}/configuration"
+
+pkg_etc=${TRIM_PKGETC:?TRIM_PKGETC is required}
+pkg_var=${TRIM_PKGVAR:?TRIM_PKGVAR is required}
+app_dest=${TRIM_APPDEST:?TRIM_APPDEST is required}
+mkdir -p "$pkg_etc" "${pkg_var}/logs"
+
+HERMES_HOME=${TRIM_PKGHOME:-${pkg_var}/home}
+WORKSPACE_DIR=
+if [ -r "${pkg_etc}/app.env" ]; then
+  . "${pkg_etc}/app.env"
+fi
+
+# fnOS supplies this variable when the authorization-path selector is saved.
+# An explicitly empty value means the user removed the authorization; an
+# absent variable means this callback was invoked for another setting.
+if [ "${TRIM_DATA_ACCESSIBLE_PATHS+x}" = x ]; then
+  WORKSPACE_DIR=$(first_authorized_path "${TRIM_DATA_ACCESSIBLE_PATHS:-}")
+fi
+
+write_agent_env "$pkg_etc" "$HERMES_HOME" "$WORKSPACE_DIR"
+write_agent_metadata "$app_dest" "$HERMES_HOME" "$WORKSPACE_DIR"
+printf '%s [Hermes Agent] config_callback; workspace=%s\n' \
+  "$(date '+%Y-%m-%d %H:%M:%S%z')" "${WORKSPACE_DIR:-<not-set>}" >>"${pkg_var}/logs/install.log"

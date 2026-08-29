@@ -12,6 +12,9 @@ RUNTIME_PY=${APP_ROOT}/runtime/python
 PYTHON_BIN=${RUNTIME_PY}/bin/python3
 HERMES_HOME=${HERMES_HOME:-${TRIM_PKGHOME:-${PKG_VAR}/home}}
 WORKSPACE_DIR=${WORKSPACE_DIR:-}
+if [ -z "$WORKSPACE_DIR" ] && [ -n "${TRIM_DATA_ACCESSIBLE_PATHS:-}" ]; then
+  WORKSPACE_DIR=${TRIM_DATA_ACCESSIBLE_PATHS%%:*}
+fi
 LOG_DIR=${LOG_DIR:-${PKG_VAR}/logs}
 APP_LOG=${APP_LOG:-${LOG_DIR}/app.log}
 AGENT_LOG=${AGENT_LOG:-${LOG_DIR}/gateway.log}
@@ -21,13 +24,15 @@ VIEWER_LOG=${VIEWER_LOG:-${LOG_DIR}/log-viewer.log}
 PIDFILE=${PIDFILE:-${PKG_VAR}/hermes-agent.pid}
 VIEWER_PIDFILE=${VIEWER_PIDFILE:-${PKG_VAR}/hermes-agent-log-viewer.pid}
 VIEWER_SCRIPT=${APP_ROOT}/logs/log_server.py
+NODE_ROOT=${APP_ROOT}/runtime/node
 
 export HERMES_HOME WORKSPACE_DIR
 export PYTHONHOME=${RUNTIME_PY}
 export PYTHONPATH=${RUNTIME_PY}/lib/python${PYTHON_VERSION:-3.11}/site-packages${PYTHONPATH:+:${PYTHONPATH}}
-export PATH=${APP_ROOT}/bin:${RUNTIME_PY}/bin:${APP_ROOT}/runtime/chromium:${PATH}
+export PATH=${APP_ROOT}/bin:${RUNTIME_PY}/bin:${NODE_ROOT}/bin:${APP_ROOT}/runtime/chromium:${PATH}
 export HERMES_GATEWAY_PORT=${HERMES_GATEWAY_PORT:-8642}
 export CHROME_BIN=${CHROME_BIN:-${APP_ROOT}/runtime/chromium/chromium}
+export AGENT_BROWSER_EXECUTABLE_PATH=${AGENT_BROWSER_EXECUTABLE_PATH:-${CHROME_BIN}}
 export HERMES_LOG_DIR=${LOG_DIR}
 export HERMES_LOG_APP_NAME="Hermes Agent"
 export HERMES_LOG_VIEWER_PORT=${HERMES_LOG_VIEWER_PORT:-8643}
@@ -37,4 +42,45 @@ mkdir -p "${HERMES_HOME}" "${LOG_DIR}" "${PKG_TMP}"
 
 log_msg() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S%z')" "${HERMES_LOG_APP_NAME}" "$*" >>"${APP_LOG}"
+}
+
+probe_browser_cdp() {
+  endpoint=$1
+  "$PYTHON_BIN" - "$endpoint" <<'PY' >/dev/null 2>&1
+import json
+import sys
+from urllib.request import urlopen
+
+endpoint = sys.argv[1].rstrip("/") + "/json/version"
+with urlopen(endpoint, timeout=2) as response:
+    payload = json.load(response)
+if not payload.get("webSocketDebuggerUrl"):
+    raise SystemExit(1)
+PY
+}
+
+configure_browser_backend() {
+  # Native fnOS applications can usually reach Chrome's loopback CDP port
+  # directly. The second candidate is the user's Docker/socat bridge.
+  configured=${HERMES_BROWSER_CDP_URL:-}
+  if [ -n "${BROWSER_CDP_URL:-}" ]; then
+    configured=$BROWSER_CDP_URL
+  fi
+  if [ -n "$configured" ]; then
+    candidates=$configured
+  else
+    candidates='http://127.0.0.1:16002 http://172.28.0.1:16003'
+  fi
+
+  BROWSER_BACKEND=bundled-chromium
+  unset BROWSER_CDP_URL 2>/dev/null || true
+  for candidate in $candidates; do
+    if probe_browser_cdp "$candidate"; then
+      BROWSER_CDP_URL=$candidate
+      BROWSER_BACKEND=external-cdp
+      export BROWSER_CDP_URL
+      break
+    fi
+  done
+  export BROWSER_BACKEND
 }

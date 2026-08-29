@@ -23,13 +23,13 @@ studio_url="${STUDIO_ARCHIVE_URL:-https://github.com/EKKOLearnAI/hermes-studio/r
 if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
   curl --fail --location --retry 3 --output "$agent_archive" "$agent_url"
   mkdir -p "${SRC_DIR}/hermes-agent"
-  tar -xzf "$agent_archive" --strip-components=1 -C "${SRC_DIR}/hermes-agent"
+  tar -xzf "$agent_archive" --no-same-owner --strip-components=1 -C "${SRC_DIR}/hermes-agent"
   test -f "${SRC_DIR}/hermes-agent/pyproject.toml"
 fi
 if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then
   curl --fail --location --retry 3 --output "$studio_archive" "$studio_url"
   mkdir -p "${SRC_DIR}/hermes-studio"
-  tar -xzf "$studio_archive" --strip-components=1 -C "${SRC_DIR}/hermes-studio"
+  tar -xzf "$studio_archive" --no-same-owner --strip-components=1 -C "${SRC_DIR}/hermes-studio"
   test -f "${SRC_DIR}/hermes-studio/bin/hermes-web-ui.mjs"
 fi
 echo "${BUILD_TARGET} upstream source(s) staged at ${SRC_DIR}."

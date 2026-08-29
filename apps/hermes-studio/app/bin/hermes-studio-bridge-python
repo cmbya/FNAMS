@@ -19,9 +19,6 @@ if [ ! -x "$real_python" ]; then
   exit 127
 fi
 
-printf '%s [Hermes Studio] bridge launcher started; launcher=%s args=%s\n' \
-  "$(timestamp)" "$real_python" "$*" >>"$log_file" 2>/dev/null || true
-
 # Hermes Studio uses this launcher for two different protocols:
 #
 #   1. the long-running IPC bridge, where all output belongs in the log; and
@@ -39,6 +36,14 @@ for arg in "$@"; do
     break
   fi
 done
+
+if [ "$is_discovery" -eq 1 ]; then
+  launch_mode=plugin-discovery
+else
+  launch_mode=bridge
+fi
+printf '%s [Hermes Studio] bridge launcher started; launcher=%s mode=%s arg_count=%s\n' \
+  "$(timestamp)" "$real_python" "$launch_mode" "$#" >>"$log_file" 2>/dev/null || true
 
 if [ "$is_discovery" -eq 1 ]; then
   discovery_stderr=${log_file}.discovery.$$

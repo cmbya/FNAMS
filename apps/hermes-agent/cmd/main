@@ -15,6 +15,30 @@ viewer_is_running() {
   kill -0 "$viewer_pid" 2>/dev/null
 }
 
+gateway_health_is_ready() {
+  "$PYTHON_BIN" - "http://127.0.0.1:${HERMES_GATEWAY_PORT}/health" <<'PY' >/dev/null 2>&1
+import json
+import sys
+from urllib.request import urlopen
+
+with urlopen(sys.argv[1], timeout=2) as response:
+    payload = json.load(response)
+ready = payload.get("status") == "ok" or payload.get("gateway") == "running"
+raise SystemExit(0 if ready else 1)
+PY
+}
+
+wait_for_gateway_health() {
+  i=0
+  while [ "$i" -lt 90 ]; do
+    is_running || return 1
+    if gateway_health_is_ready; then return 0; fi
+    sleep 1
+    i=$((i + 1))
+  done
+  return 1
+}
+
 start_viewer() {
   if viewer_is_running; then
     return 0
@@ -48,7 +72,9 @@ start() {
     exit 0
   fi
   "$(dirname "$0")/ensure_runtime"
+  configure_browser_backend
   log_msg "start requested; appdest=${APP_ROOT}; pkgvar=${PKG_VAR}; hermes_home=${HERMES_HOME}; workspace=${WORKSPACE_DIR:-<not-set>}"
+  log_msg "browser backend=${BROWSER_BACKEND}; cdp=${BROWSER_CDP_URL:-<not-connected>}; fallback_chromium=${AGENT_BROWSER_EXECUTABLE_PATH}"
   test -x "${APP_ROOT}/bin/hermes-fnos"
   umask 077
   start_viewer
@@ -57,11 +83,10 @@ start() {
   # neither needed nor suitable for a native fnOS application.
   setsid "${APP_ROOT}/bin/hermes-fnos" gateway run >>"${AGENT_LOG}" 2>&1 &
   echo $! >"${PIDFILE}"
-  sleep 2
-  if ! is_running; then
-    log_msg "gateway failed to start; inspect gateway.log and log-viewer.log"
-    stop_viewer
-    echo 'Hermes Agent failed to start; check the application log.' >&2
+  if ! wait_for_gateway_health; then
+    log_msg "gateway failed to become healthy; inspect gateway.log and log-viewer.log"
+    stop
+    echo 'Hermes Agent did not become healthy; check the application log.' >&2
     exit 1
   fi
   log_msg "gateway started; gateway_port=${HERMES_GATEWAY_PORT}; log_viewer_port=${HERMES_LOG_VIEWER_PORT}"
@@ -72,7 +97,7 @@ stop() {
   if ! is_running; then
     rm -f "$PIDFILE"
     stop_viewer
-    exit 0
+    return 0
   fi
   pid=$(cat "$PIDFILE")
   kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true

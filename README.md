@@ -21,7 +21,7 @@ export FPK_VERSION=0.1.16
 ## 安装顺序
 
 1. 安装 `HermesAgent-0.1.9-fnOS-x86_64.fpk`。
-2. 在 Agent 配置中选择一个 fnOS 授权目录，并配置模型/API 和消息平台。
+2. 在 Agent 的“应用设置 → 授权目录”中选择一个现有文件夹（例如 `/vol2/1000/HermesWorkspace`），然后保存。该目录不需要预分配容量，实际可用空间由所在存储空间的剩余容量或配额决定。
 3. 安装 `HermesStudio-0.1.16-fnOS-x86_64.fpk`。
 4. 从 fnOS 应用中心打开 Hermes Studio。
 
@@ -32,11 +32,14 @@ Studio 依赖 Agent。若 Agent 没有安装、没有启动或共享目录权限
 两个应用都会保留独立日志，并在应用中心入口中提供日志页面：
 
 - Hermes Agent 日志：`http://NAS地址:8643/`
+- Hermes Agent 状态：`http://NAS地址:8643/status`
 - Hermes Studio 日志：`http://NAS地址:8649/`
 
 日志页面可以查看最近日志并导出日志包。Agent 重点查看 `install.log`、`app.log`、`gateway.log`、`browser.log`；Studio 重点查看 `install.log`、`app.log`、`studio.log`。日志目录位于各应用的 `TRIM_PKGVAR/logs/`。
 
 Hermes Agent 使用“小安装层”封装：fnOS 直接解压的 `app.tgz` 只包含界面、日志服务、静态 BusyBox 和单个 `runtime-payload.tgz`，避免在应用中心一次解压数万个 Python/Chromium 文件。安装/升级回调再使用包内 BusyBox 在 NAS 本地离线展开运行时；全程不下载依赖。构建流程会验证外层包、内部 `app.tgz`、checksum、路径、重复成员，以及实际展开 Agent 运行时的结果；日志保存到 `dist/fpk-payload-check.log` 并随 Release 发布。
+
+浏览器工具优先连接 fnOS 主机上的 Chrome CDP：先检测 `127.0.0.1:16002`，再检测 Docker/socat 转发地址 `172.28.0.1:16003`；两者均不可用时自动回退到 Agent FPK 内置的 Chromium。即使使用外部 Chrome，Agent FPK 仍会离线包含 `agent-browser` 控制程序和 Node.js，不会在 NAS 上临时下载 npm 包。
 
 ## 版本与 Release
 

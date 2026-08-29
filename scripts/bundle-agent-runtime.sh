@@ -8,14 +8,16 @@ SRC_DIR="${ROOT_DIR}/build/upstream/hermes-agent"
 OUT_DIR="${ROOT_DIR}/build/agent-runtime-tree/app"
 WORK_DIR="${ROOT_DIR}/build/agent-runtime"
 PY_ROOT="${OUT_DIR}/runtime/python"
+NODE_ROOT="${OUT_DIR}/runtime/node"
 CHROME_ROOT="${OUT_DIR}/runtime/chromium"
 AGENT_EXTRAS=${AGENT_EXTRAS:-all,messaging,matrix,slack,dingtalk,feishu,wecom,teams,anthropic,exa,firecrawl,parallel-web,fal,modal,daytona,vercel,hindsight,bedrock,vertex,azure-identity,youtube}
 PY_URL=${PYTHON_STANDALONE_ARCHIVE_URL:-https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_BUILD_DATE}/cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_BUILD_DATE}-x86_64-unknown-linux-gnu-install_only.tar.gz}
 CHROME_URL=${CHROMIUM_ARCHIVE_URL:-https://storage.googleapis.com/chrome-for-testing-public/${CHROMIUM_VERSION}/linux64/chrome-linux64.zip}
+NODE_URL=${NODE_ARCHIVE_URL:-https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz}
 rm -rf "$WORK_DIR" "${OUT_DIR}/runtime"
-mkdir -p "$WORK_DIR/python" "$PY_ROOT" "$CHROME_ROOT" "${OUT_DIR}/bin"
+mkdir -p "$WORK_DIR/python" "$PY_ROOT" "$NODE_ROOT" "$CHROME_ROOT" "${OUT_DIR}/bin"
 curl --fail --location --retry 3 --output "$WORK_DIR/python.tar.gz" "$PY_URL"
-tar -xzf "$WORK_DIR/python.tar.gz" -C "$WORK_DIR/python"
+tar -xzf "$WORK_DIR/python.tar.gz" --no-same-owner -C "$WORK_DIR/python"
 python_bin=$(find "$WORK_DIR/python" -type f \( -path '*/bin/python3' -o -path '*/bin/python3.*' \) -perm -u+x | sort | head -n1)
 test -n "$python_bin"
 python_base=$(dirname "$(dirname "$python_bin")")
@@ -49,7 +51,8 @@ fi
 PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
-export PATH=${ROOT}/bin:${PY_ROOT}/bin:${ROOT}/runtime/chromium:${PATH}
+export PATH=${ROOT}/bin:${PY_ROOT}/bin:${ROOT}/runtime/node/bin:${ROOT}/runtime/chromium:${PATH}
+export AGENT_BROWSER_EXECUTABLE_PATH=${AGENT_BROWSER_EXECUTABLE_PATH:-${ROOT}/runtime/chromium/chromium}
 exec "${PY_ROOT}/bin/python3" "${PY_ROOT}/bin/hermes" "$@"
 EOF
 cat >"${OUT_DIR}/bin/hermes-python-fnos" <<'EOF'
@@ -68,6 +71,8 @@ fi
 PY_ROOT=${ROOT}/runtime/python
 export PYTHONHOME=${PY_ROOT}
 export PYTHONPATH=${PY_ROOT}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}
+export PATH=${ROOT}/bin:${PY_ROOT}/bin:${ROOT}/runtime/node/bin:${ROOT}/runtime/chromium:${PATH}
+export AGENT_BROWSER_EXECUTABLE_PATH=${AGENT_BROWSER_EXECUTABLE_PATH:-${ROOT}/runtime/chromium/chromium}
 exec "${PY_ROOT}/bin/python3" "$@"
 EOF
 cat >"${OUT_DIR}/bin/hermes-uv-fnos" <<'EOF'
@@ -81,9 +86,21 @@ fi
 exec "${ROOT}/bin/uv" "$@"
 EOF
 chmod 0755 "${OUT_DIR}/bin/hermes-fnos" "${OUT_DIR}/bin/hermes-python-fnos" "${OUT_DIR}/bin/hermes-uv-fnos"
+
+# Browser tools always need the agent-browser controller, including when they
+# attach to an existing Chrome over CDP. Bundle Node and an exact controller
+# version so the fnOS package never fetches npm dependencies at runtime.
+curl --fail --location --retry 3 --output "$WORK_DIR/node.tar.xz" "$NODE_URL"
+tar -xJf "$WORK_DIR/node.tar.xz" --no-same-owner --strip-components=1 -C "$NODE_ROOT"
+test -x "$NODE_ROOT/bin/node"
+"$NODE_ROOT/bin/npm" install --global --prefix "$NODE_ROOT" --ignore-scripts "agent-browser@${AGENT_BROWSER_VERSION}"
+test -x "$NODE_ROOT/bin/agent-browser"
+
 curl --fail --location --retry 3 --output "$WORK_DIR/chromium.zip" "$CHROME_URL"
 unzip -q "$WORK_DIR/chromium.zip" -d "$CHROME_ROOT"
 chrome_bin=$(find "$CHROME_ROOT" -type f \( -name chrome -o -name chromium \) -perm -u+x | head -n1)
 test -n "$chrome_bin"
-ln -sf "$chrome_bin" "${CHROME_ROOT}/chromium"
-echo 'Agent runtime, dependencies and fallback Chromium bundled.'
+chrome_relative=${chrome_bin#${CHROME_ROOT}/}
+ln -sfn "$chrome_relative" "${CHROME_ROOT}/chromium"
+test -x "${CHROME_ROOT}/chromium"
+echo 'Agent runtime, browser controller, dependencies and fallback Chromium bundled.'

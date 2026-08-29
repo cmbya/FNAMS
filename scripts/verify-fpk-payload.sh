@@ -88,6 +88,18 @@ for fpk in "${ROOT_DIR}"/dist/*.fpk; do
       echo "Agent runtime payload did not extract launcher" | tee -a "$CHECK_LOG" >&2
       exit 1
     }
+    test -x "$unpacked/runtime/node/bin/node" || {
+      echo "Agent runtime payload did not extract Node.js" | tee -a "$CHECK_LOG" >&2
+      exit 1
+    }
+    test -x "$unpacked/runtime/node/bin/agent-browser" || {
+      echo "Agent runtime payload did not extract agent-browser" | tee -a "$CHECK_LOG" >&2
+      exit 1
+    }
+    test -x "$unpacked/runtime/chromium/chromium" || {
+      echo "Agent runtime payload did not extract fallback Chromium" | tee -a "$CHECK_LOG" >&2
+      exit 1
+    }
     test -f "$unpacked/runtime/.fnos-runtime-version" || {
       echo "Agent runtime payload version marker is missing" | tee -a "$CHECK_LOG" >&2
       exit 1
