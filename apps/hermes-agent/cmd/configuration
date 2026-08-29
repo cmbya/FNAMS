@@ -16,16 +16,48 @@ first_authorized_path() {
   printf '%s' "${value%%:*}"
 }
 
+generate_api_server_key() {
+  # The API server is intentionally loopback-only, but the upstream gateway
+  # still requires a strong key before it exposes /health on fnOS.
+  od -An -N32 -tx1 /dev/urandom 2>/dev/null | tr -d '[:space:]' || true
+}
+
+ensure_api_server_key() {
+  api_server_key=${API_SERVER_KEY:-}
+  if [ "${#api_server_key}" -lt 16 ]; then
+    api_server_key=$(generate_api_server_key)
+  fi
+  [ "${#api_server_key}" -ge 16 ] || return 1
+  API_SERVER_KEY=$api_server_key
+  export API_SERVER_KEY
+}
+
 write_agent_env() {
   config_dir=$1
   configured_home=$2
   configured_workspace=$3
+  ensure_api_server_key || {
+    echo 'Unable to generate a local API_SERVER_KEY' >&2
+    return 1
+  }
+  configured_browser_cdp=${HERMES_BROWSER_CDP_URL:-}
+  if [ -z "$configured_browser_cdp" ] && [ -n "${BROWSER_CDP_URL:-}" ]; then
+    configured_browser_cdp=$BROWSER_CDP_URL
+  fi
   temp_file=${config_dir}/app.env.tmp.$$
   umask 077
   {
     printf 'HERMES_HOME='; shell_quote "$configured_home"; printf '\n'
     printf 'WORKSPACE_DIR='; shell_quote "$configured_workspace"; printf '\n'
     printf 'HERMES_GATEWAY_PORT=8642\n'
+    printf 'API_SERVER_KEY='; shell_quote "$API_SERVER_KEY"; printf '\n'
+    printf 'API_SERVER_HOST=127.0.0.1\n'
+    printf 'API_SERVER_PORT=8642\n'
+    if [ -n "$configured_browser_cdp" ]; then
+      printf 'HERMES_BROWSER_CDP_URL='
+      shell_quote "$configured_browser_cdp"
+      printf '\n'
+    fi
   } >"$temp_file"
   chmod 0600 "$temp_file" 2>/dev/null || true
   mv -f "$temp_file" "${config_dir}/app.env"
