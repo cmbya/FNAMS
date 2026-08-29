@@ -1,1 +1,1 @@
-0.1.18: preserve fnOS Agent bridge runtime after upstream user-cli selection; build Studio-only.
+0.1.19: preserve fnOS Agent bridge runtime after upstream user-cli selection; build Studio-only (static fixture compatibility).
