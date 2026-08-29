@@ -55,7 +55,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl jq zstd patchelf imagemagick unzip xz-utils busybox-static
+          sudo apt-get install -y curl jq zstd patchelf imagemagick librsvg2-bin unzip xz-utils busybox-static
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
