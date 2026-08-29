@@ -2,14 +2,15 @@
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "${ROOT_DIR}/versions.lock"
-FPK_VERSION=${PACKAGE_VERSION:-$FPK_VERSION}
+FPK_VERSION=${AGENT_PACKAGE_VERSION:-${PACKAGE_VERSION:-${FPK_VERSION:-}}}
+test -n "$FPK_VERSION"
 STAGE="${ROOT_DIR}/build/agent-stage"
 mkdir -p "${ROOT_DIR}/dist"
 rm -rf "$STAGE"
 cp -a "${ROOT_DIR}/apps/hermes-agent/." "$STAGE/"
 cp -a "${ROOT_DIR}/build/agent-runtime-tree/app/." "$STAGE/app/"
 sed -E -i "0,/^version=.*/s//version=${FPK_VERSION}/" "$STAGE/manifest"
-install -d "$STAGE/app/ui/images"
+install -d "${ROOT_DIR}/build/agent-runtime-tree/app/ui/images" "$STAGE/app/ui/images"
 bash "${ROOT_DIR}/scripts/render-svg-icon.sh" "${ROOT_DIR}/assets/hermes-agent.svg" 256 "$STAGE/app/ui/images/icon_256.png"
 bash "${ROOT_DIR}/scripts/render-svg-icon.sh" "${ROOT_DIR}/assets/hermes-agent.svg" 64 "$STAGE/app/ui/images/icon_64.png"
 bash "${ROOT_DIR}/scripts/render-svg-icon.sh" "${ROOT_DIR}/assets/hermes-agent.svg" 256 "$STAGE/ICON_256.PNG"
