@@ -24,6 +24,9 @@ grep -q 'bridge.ready === true' "$ROOT_DIR/apps/hermes-studio/cmd/main"
 grep -q '"url": "/status"' "$ROOT_DIR/apps/hermes-agent/app/ui/config"
 grep -q 'agent-browser@${AGENT_BROWSER_VERSION}' "$ROOT_DIR/scripts/bundle-agent-runtime.sh"
 grep -q -- '--no-same-owner' "$ROOT_DIR/scripts/fetch-upstream.sh"
+grep -q 'ensure_api_server_key' "$ROOT_DIR/apps/hermes-agent/cmd/configuration"
+grep -q 'API_SERVER_KEY=' "$ROOT_DIR/apps/hermes-agent/cmd/configuration"
+grep -q 'gateway health diagnosis' "$ROOT_DIR/apps/hermes-agent/cmd/main"
 if command -v node >/dev/null 2>&1; then
   node --check "$ROOT_DIR/apps/hermes-studio/app/logs/log_server.mjs"
 fi
