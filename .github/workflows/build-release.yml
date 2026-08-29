@@ -58,11 +58,11 @@ jobs:
           target="${{ inputs.target || '' }}"
           if [ -z "$target" ]; then
             changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
-            if printf '%s\\n' "$changed" | grep -qx '.github/build-both-request'; then
+            if printf '%s\n' "$changed" | grep -qx '.github/build-both-request'; then
               target=both
-            elif printf '%s\\n' "$changed" | grep -qx '.github/build-studio-request'; then
+            elif printf '%s\n' "$changed" | grep -qx '.github/build-studio-request'; then
               target=studio
-            elif printf '%s\\n' "$changed" | grep -qx '.github/build-agent-request'; then
+            elif printf '%s\n' "$changed" | grep -qx '.github/build-agent-request'; then
               target=agent
             else
               echo 'No explicit build target request found.' >&2
