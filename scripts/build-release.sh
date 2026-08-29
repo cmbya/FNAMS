@@ -7,7 +7,7 @@ requested_agent_version=${AGENT_PACKAGE_VERSION:-}
 requested_studio_version=${STUDIO_PACKAGE_VERSION:-}
 source versions.lock
 
-BUILD_TARGET=${BUILD_TARGET:-both}
+BUILD_TARGET=${BUILD_TARGET:-agent}
 case "$BUILD_TARGET" in
   agent|studio|both) ;;
   *) echo "BUILD_TARGET must be agent, studio, or both (got: $BUILD_TARGET)" >&2; exit 2 ;;
