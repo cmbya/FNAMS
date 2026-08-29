@@ -3,6 +3,13 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT_DIR"
 source versions.lock
+PACKAGE_VERSION=${PACKAGE_VERSION:-$FPK_VERSION}
+if [[ ! "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+  echo "PACKAGE_VERSION must look like 0.1.17 (got: $PACKAGE_VERSION)" >&2
+  exit 2
+fi
+FPK_VERSION=$PACKAGE_VERSION
+export PACKAGE_VERSION FPK_VERSION
 BUILD_TARGET=${BUILD_TARGET:-both}
 case "$BUILD_TARGET" in
   agent|studio|both) ;;
