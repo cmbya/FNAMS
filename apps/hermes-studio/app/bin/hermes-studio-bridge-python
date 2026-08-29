@@ -21,4 +21,41 @@ fi
 
 printf '%s [Hermes Studio] bridge launcher started; launcher=%s args=%s\n' \
   "$(timestamp)" "$real_python" "$*" >>"$log_file" 2>/dev/null || true
+
+# Hermes Studio uses this launcher for two different protocols:
+#
+#   1. the long-running IPC bridge, where all output belongs in the log; and
+#   2. plugin discovery, where the Python program writes one JSON document to
+#      stdout and the Node server parses that document.
+#
+# Redirecting stdout for both cases makes plugin discovery return an empty
+# string to Node and produces "Unexpected end of JSON input". Preserve stdout
+# for the short-lived discovery command, while still copying its stderr into
+# the diagnostic log.
+is_discovery=0
+for arg in "$@"; do
+  if [ "$arg" = "-c" ]; then
+    is_discovery=1
+    break
+  fi
+done
+
+if [ "$is_discovery" -eq 1 ]; then
+  discovery_stderr=${log_file}.discovery.$$
+  if : >"$discovery_stderr" 2>/dev/null; then
+    if "$real_python" "$@" 2>"$discovery_stderr"; then
+      status=0
+    else
+      status=$?
+    fi
+    if [ -s "$discovery_stderr" ]; then
+      cat "$discovery_stderr" >>"$log_file" 2>/dev/null || true
+      cat "$discovery_stderr" >&2
+    fi
+    rm -f "$discovery_stderr"
+    exit "$status"
+  fi
+  exec "$real_python" "$@"
+fi
+
 exec "$real_python" "$@" >>"$log_file" 2>&1

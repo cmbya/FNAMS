@@ -1,1 +1,1 @@
-0.1.15: Studio-only build after exporting Bridge Python, restoring workspace, and using the browser URL entry.
+0.1.16: Studio-only build preserving plugin-discovery JSON stdout while retaining Bridge diagnostics.
