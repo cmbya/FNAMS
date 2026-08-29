@@ -2,7 +2,8 @@
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "${ROOT_DIR}/versions.lock"
-FPK_VERSION=${PACKAGE_VERSION:-$FPK_VERSION}
+FPK_VERSION=${STUDIO_PACKAGE_VERSION:-${PACKAGE_VERSION:-${FPK_VERSION:-}}}
+test -n "$FPK_VERSION"
 STAGE="${ROOT_DIR}/build/studio-stage"
 mkdir -p "${ROOT_DIR}/dist"
 rm -rf "$STAGE"
