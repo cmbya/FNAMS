@@ -22,6 +22,7 @@ unset HERMES_HOME WORKSPACE_DIR HERMES_GATEWAY_PORT
 source "$TEST_ROOT/etc/app.env"
 test "$WORKSPACE_DIR" = "$TEST_ROOT/Hermes Workspace"
 test "$HERMES_HOME" = "$TEST_ROOT/home"
+test "$HOME" = "$TEST_ROOT/home"
 test "$API_SERVER_HOST" = "127.0.0.1"
 test "$API_SERVER_PORT" = "8642"
 test "${#API_SERVER_KEY}" -ge 16

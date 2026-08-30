@@ -47,6 +47,10 @@ write_agent_env() {
   temp_file=${config_dir}/app.env.tmp.$$
   umask 077
   {
+    # Persist the standard home variable as well as HERMES_HOME.  fnOS may
+    # invoke the package after a reboot with /home/hermesagent as the account
+    # home; the generated environment must make the intended path explicit.
+    printf 'HOME='; shell_quote "$configured_home"; printf '\n'
     printf 'HERMES_HOME='; shell_quote "$configured_home"; printf '\n'
     printf 'WORKSPACE_DIR='; shell_quote "$configured_workspace"; printf '\n'
     printf 'HERMES_GATEWAY_PORT=8642\n'

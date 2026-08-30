@@ -31,8 +31,10 @@ BUNDLED_SKILLS_DIR=${HERMES_BUNDLED_SKILLS:-${RUNTIME_PY}/skills}
 # default may be /home/hermesagent and can reject mkdir()). Hermes' QQ and
 # Telegram adapters acquire machine-local transport locks through XDG state;
 # keep those locks and all XDG-owned runtime state inside the persistent app
-# home. Also provide a real terminal cwd so the upstream gateway does not
-# fall back to the missing service-account home.
+# home. Also override the standard HOME variable so the upstream gateway and
+# every child process inherit the persistent fnOS app home instead of falling
+# back to the missing service-account home. Provide a real terminal cwd too.
+HOME=${HERMES_HOME}
 XDG_CONFIG_HOME=${HERMES_HOME}/.config
 XDG_CACHE_HOME=${HERMES_HOME}/.cache
 XDG_DATA_HOME=${HERMES_HOME}/.local/share
@@ -40,7 +42,7 @@ XDG_STATE_HOME=${HERMES_HOME}/.local/state
 HERMES_GATEWAY_LOCK_DIR=${HERMES_HOME}/state/locks
 TERMINAL_CWD=${TERMINAL_CWD:-${WORKSPACE_DIR:-${HERMES_HOME}}}
 
-export HERMES_HOME WORKSPACE_DIR
+export HOME HERMES_HOME WORKSPACE_DIR
 export XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
 export HERMES_GATEWAY_LOCK_DIR TERMINAL_CWD
 export PYTHONHOME=${RUNTIME_PY}
