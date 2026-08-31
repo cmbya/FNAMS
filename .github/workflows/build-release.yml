@@ -101,6 +101,8 @@ jobs:
           manifest=dist/build-manifest.json
           agent_version=$(jq -r '.package_versions.agent // empty' "$manifest")
           studio_version=$(jq -r '.package_versions.studio // empty' "$manifest")
+          agent_upstream_tag=$(jq -r '.upstream.agent.tag // .hermes_agent.tag // empty' "$manifest")
+          studio_upstream_tag=$(jq -r '.upstream.studio.tag // .hermes_studio.tag // empty' "$manifest")
 
           ensure_release() {
             tag=$1
@@ -130,6 +132,7 @@ jobs:
           publish_release() {
             target=$1
             version=$2
+            upstream_tag=$3
             case "$target" in
               agent)
                 tag="agent-v${version}"
@@ -145,20 +148,26 @@ jobs:
                 ;;
               *) echo "Unknown release target: $target" >&2; exit 2 ;;
             esac
+            if [ -n "$upstream_tag" ]; then
+              title="${title} · upstream ${upstream_tag}"
+              notes="${notes} 上游正式 Release：${upstream_tag}。"
+            fi
             test -s "$asset"
             ensure_release "$tag" "$title" "$notes"
             upload_asset "$tag" "$asset"
             upload_asset "$tag" dist/SHA256SUMS
             upload_asset "$tag" dist/build-manifest.json
             upload_asset "$tag" dist/fpk-payload-check.log
-            gh release edit "$tag" --draft=false --repo "$GITHUB_REPOSITORY"
+            # Also update the title when a release tag already exists. This
+            # keeps reruns and rebuilt packages in sync with the upstream tag.
+            gh release edit "$tag" --title "$title" --draft=false --repo "$GITHUB_REPOSITORY"
           }
 
-          if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
-            publish_release agent "$agent_version"
+          if [ "$BUILD_TARGET" = "agent" ] || [ "$BUILD_TARGET" = "both" ]; then
+            publish_release agent "$agent_version" "$agent_upstream_tag"
           fi
-          if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then
-            publish_release studio "$studio_version"
+          if [ "$BUILD_TARGET" = "studio" ] || [ "$BUILD_TARGET" = "both" ]; then
+            publish_release studio "$studio_version" "$studio_upstream_tag"
           fi
 
       - name: Persist independent version state
