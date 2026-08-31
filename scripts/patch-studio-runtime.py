@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -19,23 +20,77 @@ def replace_once(path: Path, old: str, new: str, label: str) -> None:
 def patch_server_bridge_resolver(root: Path) -> None:
     """Keep fnOS's Agent runtime available after upstream runtime selection.
 
-    Studio v0.7.1 clears HERMES_AGENT_BRIDGE_PYTHON and HERMES_AGENT_ROOT
-    when it detects a user-cli installation.  On fnOS HERMES_BIN is a shell
-    launcher, so the subsequent shebang fallback can incorrectly execute that
-    shell as Python and exit with code 2.  The fnOS-specific variables survive
-    that upstream cleanup and point at the actual Agent runtime.
+    Older Studio releases clear HERMES_AGENT_BRIDGE_PYTHON and
+    HERMES_AGENT_ROOT when they detect a user-cli installation. On fnOS
+    HERMES_BIN is a shell launcher, so a later fallback can incorrectly
+    execute that shell as Python and exit with code 2. Keep the fnOS-specific
+    variables as a compatibility fallback while allowing the upstream bundle
+    to change its minified function names and layout.
     """
     bundle = root / "dist/server/index.js"
     if not bundle.is_file():
         # The source-level fixture used by runtime-config.sh only contains
         # the Python bridge files. The release tree has the compiled bundle.
         return
-    replace_once(
-        bundle,
-        """function jse(t={}){let e=t.hermesHome||Gy(),n=Jsn(t.agentRoot,e),a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON;if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};""",
-        """function jse(t={}){let e=t.hermesHome||Gy(),n=Jsn(t.agentRoot||process.env.HERMES_AGENT_ROOT_FNOS,e),a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON||process.env.HERMES_AGENT_BRIDGE_PYTHON_FNOS;if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};""",
-        "fnos-agent-runtime-fallback",
+
+    text = bundle.read_text(encoding="utf-8")
+    legacy_old = (
+        "function jse(t={}){let e=t.hermesHome||Gy(),n=Jsn(t.agentRoot,e),"
+        "a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON;"
+        "if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};"
     )
+    legacy_new = (
+        "function jse(t={}){let e=t.hermesHome||Gy(),"
+        "n=Jsn(t.agentRoot||process.env.HERMES_AGENT_ROOT_FNOS,e),"
+        "a=t.python||process.env.HERMES_AGENT_BRIDGE_PYTHON||"
+        "process.env.HERMES_AGENT_BRIDGE_PYTHON_FNOS;"
+        "if(a)return{command:a,argsPrefix:[],agentRoot:n,hermesHome:e};"
+    )
+    legacy_count = text.count(legacy_old)
+    if legacy_count > 1:
+        raise RuntimeError(
+            f"fnos-agent-runtime-fallback: expected one patch anchor in "
+            f"{bundle}, found {legacy_count}"
+        )
+    if legacy_count == 1:
+        bundle.write_text(text.replace(legacy_old, legacy_new, 1), encoding="utf-8")
+        print("Applied fnOS compiled bridge resolver compatibility patch.")
+        return
+
+    # Studio v0.7.11 changed the minified resolver shape. These property
+    # accesses are stable across that change, so patch only unpatched
+    # references and leave the upstream function structure intact.
+    replacements = (
+        (
+            "process.env.HERMES_AGENT_ROOT",
+            "process.env.HERMES_AGENT_ROOT||process.env.HERMES_AGENT_ROOT_FNOS",
+            "agent-root-fallback",
+        ),
+        (
+            "process.env.HERMES_AGENT_BRIDGE_PYTHON",
+            "process.env.HERMES_AGENT_BRIDGE_PYTHON||"
+            "process.env.HERMES_AGENT_BRIDGE_PYTHON_FNOS",
+            "agent-python-fallback",
+        ),
+    )
+    patched = []
+    for old, new, label in replacements:
+        text, count = re.subn(
+            rf"{re.escape(old)}(?!_FNOS)",
+            new,
+            text,
+        )
+        if count:
+            patched.append(f"{label}={count}")
+
+    if patched:
+        bundle.write_text(text, encoding="utf-8")
+        print("Applied fnOS compiled bridge resolver compatibility patches: " + ", ".join(patched))
+    else:
+        # Newer upstream releases may contain their own shell-wrapper fix and
+        # no longer expose either resolver property. Do not block packaging
+        # merely because an obsolete compiled anchor disappeared.
+        print("Skipped fnOS compiled bridge resolver patch: upstream resolver has no known anchor.")
 
 def main() -> int:
     if len(sys.argv) != 2:
