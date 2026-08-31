@@ -50,7 +50,16 @@ test "$API_SERVER_KEY" = "$saved_api_server_key"
 # Verify the Studio release patch remains syntactically valid and suppresses
 # only expected client disconnects/title-refinement warnings.
 STUDIO_FIXTURE="$TEST_ROOT/studio"
-mkdir -p "$STUDIO_FIXTURE/packages/server/src/services/hermes/agent-bridge/python"
+# The compiled resolver is minified differently in newer Studio releases, but
+# it still exposes these environment-property references.
+mkdir -p "$STUDIO_FIXTURE/dist/server" "$STUDIO_FIXTURE/packages/server/src/services/hermes/agent-bridge/python"
+cat >"$STUDIO_FIXTURE/dist/server/index.js" <<'JS'
+function bridge(options = {}) {
+  const agentRoot = process.env.HERMES_AGENT_ROOT
+  const python = options.python || process.env.HERMES_AGENT_BRIDGE_PYTHON
+  return { agentRoot, python }
+}
+JS
 cat >"$STUDIO_FIXTURE/packages/server/src/services/hermes/agent-bridge/python/bridge_pool.py" <<'PY'
 import os
 
@@ -80,6 +89,8 @@ def handle(conn):
             conn.close()
 PY
 python3 "$ROOT_DIR/scripts/patch-studio-runtime.py" "$STUDIO_FIXTURE"
+grep -q 'HERMES_AGENT_ROOT_FNOS' "$STUDIO_FIXTURE/dist/server/index.js"
+grep -q 'HERMES_AGENT_BRIDGE_PYTHON_FNOS' "$STUDIO_FIXTURE/dist/server/index.js"
 grep -q 'def title_callback(title: str, _source: str = "")' "$STUDIO_FIXTURE/packages/server/src/services/hermes/agent-bridge/python/bridge_pool.py"
 grep -q 'conversation_history=(' "$STUDIO_FIXTURE/packages/server/src/services/hermes/agent-bridge/python/bridge_pool.py"
 grep -q 'failure_callback=None' "$STUDIO_FIXTURE/packages/server/src/services/hermes/agent-bridge/python/bridge_pool.py"
