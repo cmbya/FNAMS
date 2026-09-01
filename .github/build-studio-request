@@ -1,1 +1,1 @@
-0.1.8: fix full bundled Agent runtime selection for Studio startup.
+0.1.9: fix bundled Agent version probe before next Studio build.
