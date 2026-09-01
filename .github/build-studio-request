@@ -1,1 +1,1 @@
-0.1.9: fix bundled Agent version probe before next Studio build.
+0.1.10: fix Studio shell syntax after bundled Agent runtime patch.

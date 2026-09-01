@@ -194,7 +194,7 @@ if [ -n "${AGENT_PYTHON_BIN:-}" ] \
   && [ -f "${HERMES_AGENT_ROOT}/run_agent.py" ]; then
   HERMES_AGENT_CLI_PYTHON=${AGENT_PYTHON_BIN}
   hermes_runtime_version=$("${HERMES_BIN}" --version 2>/dev/null \
-    | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true
+    | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
   if [ -z "${hermes_runtime_version}" ]; then
     hermes_runtime_version=0.0.0
   fi
