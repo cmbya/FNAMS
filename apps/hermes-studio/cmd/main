@@ -17,6 +17,8 @@ if ! . "$MAIN_DIR/common"; then
   exit 1
 fi
 
+boot_log "common loaded; node=${NODE}; hermes_bin=${HERMES_BIN}; bridge_python=${HERMES_AGENT_BRIDGE_PYTHON}; bridge_python_real=${HERMES_AGENT_BRIDGE_PYTHON_REAL:-<unset>}; agent_root=${HERMES_AGENT_ROOT:-<unset>}; selection_locked=${HERMES_RUNTIME_SELECTION_LOCKED:-<unset>}"
+
 is_running() {
   [ -s "$PIDFILE" ] || return 1
   pid=$(cat "$PIDFILE")
@@ -84,6 +86,16 @@ start() {
   test -f "$STUDIO_ENTRY"
   test -x "$HERMES_BIN"
   test -x "$HERMES_AGENT_BRIDGE_PYTHON"
+  if [ -d "${AGENT_APP_ROOT:-/nonexistent}" ] && [ -z "${AGENT_PYTHON_BIN:-}" ]; then
+    log_msg "studio preflight failed: complete Hermes Agent runtime is not initialized"
+    echo 'Hermes Agent runtime is not initialized; start Hermes Agent once, then start Hermes Studio.' >&2
+    exit 1
+  fi
+  if [ -n "${AGENT_PYTHON_BIN:-}" ] && [ ! -x "$AGENT_PYTHON_BIN" ]; then
+    log_msg "studio preflight failed: bundled Agent Python is not executable: $AGENT_PYTHON_BIN"
+    echo 'Hermes Studio cannot execute the bundled Hermes Agent Python runtime.' >&2
+    exit 1
+  fi
   if [ -z "${HERMES_HOME:-}" ] || [ ! -d "$HERMES_HOME" ]; then
     log_msg "studio preflight failed: Hermes Agent data directory is missing"
     echo 'Hermes Agent data directory is missing; start Hermes Agent first.' >&2

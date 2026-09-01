@@ -83,12 +83,14 @@ else
   unset WORKSPACE_BASE WORKSPACE_DIR 2>/dev/null || true
 fi
 
-# The bundled Agent runtime installs run_agent.py into Python's
-# site-packages directory rather than directly below @appcenter/HermesAgent.
-# Hermes Studio's upstream bridge resolver needs that directory as
-# HERMES_AGENT_ROOT; without it the bridge exits before creating its IPC
-# socket with "run_agent.py not found".
-if [ -z "${HERMES_AGENT_ROOT:-}" ] && [ -n "${AGENT_APP_ROOT:-}" ]; then
+# The complete fnOS Agent package keeps run_agent.py and all of its
+# Python dependencies in the bundled Python site-packages directory. Resolve
+# both paths here so Studio never tries to execute the shell launcher as
+# Python and so the upstream runtime selector can be locked to this Agent.
+AGENT_PYTHON_HOME=
+AGENT_PYTHON_SITE=
+AGENT_PYTHON_BIN=
+if [ -n "${AGENT_APP_ROOT:-}" ]; then
   for agent_root_candidate in \
     "${AGENT_APP_ROOT}/runtime/python/lib/python3.11/site-packages" \
     "${AGENT_APP_ROOT}/runtime/python/lib/python3.12/site-packages" \
@@ -96,9 +98,23 @@ if [ -z "${HERMES_AGENT_ROOT:-}" ] && [ -n "${AGENT_APP_ROOT:-}" ]; then
     "${AGENT_APP_ROOT}"; do
     if [ -f "${agent_root_candidate}/run_agent.py" ]; then
       HERMES_AGENT_ROOT=${agent_root_candidate}
+      AGENT_PYTHON_SITE=${agent_root_candidate}
+      AGENT_PYTHON_HOME=${AGENT_APP_ROOT}/runtime/python
       break
     fi
   done
+  if [ -n "${AGENT_PYTHON_HOME}" ] && [ -x "${AGENT_PYTHON_HOME}/bin/python3" ]; then
+    AGENT_PYTHON_BIN=${AGENT_PYTHON_HOME}/bin/python3
+  fi
+fi
+if [ -n "${AGENT_PYTHON_BIN:-}" ]; then
+  export PYTHONHOME="${AGENT_PYTHON_HOME}"
+  if [ -n "${PYTHONPATH:-}" ]; then
+    PYTHONPATH="${AGENT_PYTHON_SITE}:${PYTHONPATH}"
+  else
+    PYTHONPATH=${AGENT_PYTHON_SITE}
+  fi
+  export PYTHONPATH
 fi
 
 # A package upgrade can leave @appdata/HermesStudio owned by the previous
@@ -127,30 +143,67 @@ if [ -n "$STUDIO_RUNTIME_ROOT" ]; then
   WEB_UI_HOME=${PKG_VAR}/web-ui
 fi
 
-export HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
+if [ -n "${AGENT_APP_ROOT:-}" ] && [ -x "${AGENT_APP_ROOT}/bin/hermes-fnos" ]; then
+  HERMES_BIN=${AGENT_APP_ROOT}/bin/hermes-fnos
+else
+  HERMES_BIN=${HERMES_BIN:-/usr/local/bin/hermes-fnos}
+fi
+export HERMES_BIN
 if [ -n "${HERMES_AGENT_ROOT:-}" ]; then
   export HERMES_AGENT_ROOT
-  # Upstream Studio v0.7.x clears HERMES_AGENT_ROOT while selecting its
-  # preferred user-cli runtime. Preserve the fnOS-resolved root separately so
-  # the Bridge can still import the Agent runtime afterwards.
+  # Keep fnOS's resolved runtime outside the upstream selector's managed
+  # environment so recovery and bridge startup can restore it if needed.
   export HERMES_AGENT_ROOT_FNOS=${HERMES_AGENT_ROOT}
 else
   unset HERMES_AGENT_ROOT 2>/dev/null || true
   unset HERMES_AGENT_ROOT_FNOS 2>/dev/null || true
 fi
-HERMES_AGENT_BRIDGE_PYTHON_REAL=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
+
+# The bridge must receive the real bundled interpreter. The Studio wrapper
+# remains the public launcher because it also handles plugin discovery output.
+if [ -n "${AGENT_PYTHON_BIN:-}" ]; then
+  HERMES_AGENT_BRIDGE_PYTHON_REAL=${AGENT_PYTHON_BIN}
+else
+  HERMES_AGENT_BRIDGE_PYTHON_REAL=${HERMES_AGENT_BRIDGE_PYTHON:-/usr/local/bin/hermes-python-fnos}
+fi
 HERMES_AGENT_BRIDGE_PYTHON=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
 if [ -x "${APP_ROOT}/bin/hermes-studio-bridge-python" ]; then
   HERMES_AGENT_BRIDGE_PYTHON=${APP_ROOT}/bin/hermes-studio-bridge-python
 fi
 export HERMES_AGENT_BRIDGE_PYTHON
-export HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
+if [ -n "${AGENT_APP_ROOT:-}" ] && [ -x "${AGENT_APP_ROOT}/bin/hermes-uv-fnos" ]; then
+  HERMES_AGENT_BRIDGE_UV=${AGENT_APP_ROOT}/bin/hermes-uv-fnos
+else
+  HERMES_AGENT_BRIDGE_UV=${HERMES_AGENT_BRIDGE_UV:-/usr/local/bin/hermes-uv-fnos}
+fi
+export HERMES_AGENT_BRIDGE_UV
 export HERMES_AGENT_BRIDGE_PYTHON_REAL
 if [ -x "${HERMES_AGENT_BRIDGE_PYTHON_REAL}" ]; then
-  # This name is deliberately not part of upstream's managed-runtime cleanup.
+  # These names are deliberately not part of upstream's managed-runtime cleanup.
   export HERMES_AGENT_BRIDGE_PYTHON_FNOS=${HERMES_AGENT_BRIDGE_PYTHON_REAL}
 else
   unset HERMES_AGENT_BRIDGE_PYTHON_FNOS 2>/dev/null || true
+fi
+
+# Upstream v0.7.x has a desktop runtime-selection lock specifically for
+# applications that own their Hermes runtime. fnOS's complete Agent package is
+# such a runtime: keep its real Python and root visible to the bridge instead
+# of allowing the shell launcher probe to clear them.
+if [ -n "${AGENT_PYTHON_BIN:-}" ] \
+  && [ -n "${HERMES_AGENT_ROOT:-}" ] \
+  && [ -f "${HERMES_AGENT_ROOT}/run_agent.py" ]; then
+  HERMES_AGENT_CLI_PYTHON=${AGENT_PYTHON_BIN}
+  hermes_runtime_version=$(""${HERMES_BIN}"" --version 2>/dev/null \
+    | grep -oE 'v?[0-9]+\\.[0-9]+\\.[0-9]+' | head -n 1 || true)
+  if [ -z "${hermes_runtime_version}" ]; then
+    hermes_runtime_version=0.0.0
+  fi
+  export HERMES_AGENT_CLI_PYTHON
+  export HERMES_RUNTIME_SOURCE=user-cli
+  export HERMES_RUNTIME_VERSION=${hermes_runtime_version}
+  export HERMES_RUNTIME_SELECTION_LOCKED=true
+  export HERMES_DESKTOP=true
+  export HERMES_FNOS_RUNTIME_LOCKED=1
 fi
 export HERMES_AGENT_BRIDGE_ENDPOINT=${HERMES_AGENT_BRIDGE_ENDPOINT:-ipc://${PKG_TMP}/hermes-agent-bridge.sock}
 export HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=${HERMES_AGENT_BRIDGE_WORKER_TRANSPORT:-ipc}
@@ -231,5 +284,6 @@ log_runtime_identity() {
   if [ -n "${STUDIO_RUNTIME_ROOT}" ]; then
     log_msg "runtime fallback: original_pkgvar=${ORIGINAL_PKG_VAR}; runtime_root=${STUDIO_RUNTIME_ROOT}"
   fi
+  log_msg "agent runtime: hermes_bin=${HERMES_BIN}; python_real=${HERMES_AGENT_BRIDGE_PYTHON_REAL:-<unresolved>}; cli_python=${HERMES_AGENT_CLI_PYTHON:-<unresolved>}; agent_root=${HERMES_AGENT_ROOT:-<unresolved>}; full_runtime=${HERMES_FNOS_RUNTIME_LOCKED:-0}; selection_locked=${HERMES_RUNTIME_SELECTION_LOCKED:-0}; desktop=${HERMES_DESKTOP:-0}"
   log_msg "browser backend=${BROWSER_BACKEND}; cdp=${BROWSER_CDP_URL:-<not-connected>}; fallback_chromium=${AGENT_BROWSER_EXECUTABLE_PATH:-<unresolved>}"
 }

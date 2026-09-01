@@ -1,1 +1,1 @@
-0.1.20: build Studio v0.7.12 after upstream formal release.
+0.1.8: fix full bundled Agent runtime selection for Studio startup.
