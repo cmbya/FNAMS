@@ -1,9 +1,9 @@
 name: Check formal Hermes upstream Releases
 
 on:
-  # GitHub Actions cron uses UTC. 04:10 UTC is 12:10 Asia/Shanghai.
+  # GitHub Actions cron uses UTC. 02:10 UTC is 10:10 Asia/Shanghai.
   schedule:
-    - cron: '10 4 * * *'
+    - cron: '10 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve and trigger changed upstream projects
+      - name: Resolve upstream changes and trigger one unified build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -24,9 +24,14 @@ jobs:
 
           latest_formal_tag() {
             repository=$1
-            candidates=$(gh api "repos/${repository}/releases?per_page=100" --paginate \
-              --jq '([.[] | select(.draft == false and .prerelease == false)] | .[0].tag_name) // empty')
-            printf '%s\n' "${candidates%%$'\n'*}"
+            candidates=$(gh api "repos/$repository/releases?per_page=100" --paginate \
+              --jq '
+                .[] |
+                select(.draft == false and .prerelease == false) |
+                [(.published_at // ""), .tag_name] |
+                @tsv
+              ')
+            printf '%s\n' "$candidates" | sort -r | head -n1 | cut -f2
           }
 
           latest_studio_web_tag() {
@@ -53,17 +58,26 @@ jobs:
           if [ "$latest_agent" != "$HERMES_AGENT_TAG" ]; then
             agent_changed=1
             echo "New Hermes Agent formal Release: $latest_agent"
-            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" \
-              -f target=agent -f use_latest_releases=true
           fi
 
           if [ "$latest_studio" != "$HERMES_STUDIO_TAG" ]; then
             studio_changed=1
             echo "New Hermes Studio formal Release: $latest_studio"
-            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" \
-              -f target=studio -f use_latest_releases=true
           fi
 
-          if [ "$agent_changed" = 0 ] && [ "$studio_changed" = 0 ]; then
+          target=
+          if [ "$agent_changed" = 1 ] && [ "$studio_changed" = 1 ]; then
+            target=both
+          elif [ "$agent_changed" = 1 ]; then
+            target=agent
+          elif [ "$studio_changed" = 1 ]; then
+            target=studio
+          fi
+
+          if [ -n "$target" ]; then
+            echo "Triggering one unified build for target: $target"
+            gh workflow run build-release.yml --repo "$GITHUB_REPOSITORY" \
+              -f target="$target" -f use_latest_releases=true
+          else
             echo 'No new formal upstream Release.'
           fi
