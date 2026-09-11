@@ -10,14 +10,18 @@ case "$target" in
   *) echo "BUILD_TARGET must be agent, studio, or both (got: $target)" >&2; exit 2 ;;
 esac
 
-latest_tag() {
+latest_agent_release() {
   local repository=$1
   local candidates
-  candidates=$(gh api "repos/${repository}/releases?per_page=100" --paginate \
-    --jq '([.[] | select(.draft == false and .prerelease == false)] | .[0].tag_name) // empty')
-  printf '%s\n' "${candidates%%$'\n'*}"
+  candidates=$(gh api "repos/$repository/releases?per_page=100" --paginate \
+    --jq '
+      .[] |
+      select(.draft == false and .prerelease == false) |
+      [(.published_at // ""), .tag_name, (.name // "")] |
+      @tsv
+    ')
+  printf '%s\n' "$candidates" | sort -r | head -n1 | cut -f2-
 }
-
 
 # Studio tags may refer to Android/HStudio releases; resolve the actual Web UI asset version.
 latest_studio_release() {
@@ -35,6 +39,7 @@ latest_studio_release() {
     ')
   printf '%s\n' "$candidates" | sort -t$'\t' -k2,2V | tail -n1
 }
+
 release_commit() {
   local repository=$1
   local tag=$2
@@ -43,13 +48,20 @@ release_commit() {
 
 : > "${ROOT_DIR}/build/upstream.env"
 if [ "$target" = agent ] || [ "$target" = both ]; then
-  agent_tag=$(latest_tag NousResearch/hermes-agent)
-  test -n "$agent_tag"
+  agent_release=$(latest_agent_release NousResearch/hermes-agent)
+  test -n "$agent_release"
+  agent_tag=$(printf '%s\n' "$agent_release" | cut -f1)
+  agent_name=$(printf '%s\n' "$agent_release" | cut -f2-)
+  test -n "$agent_tag" -a -n "$agent_name"
+  agent_display_version=$(printf '%s\n' "$agent_name" | sed -nE 's/^.*(v[0-9]+[.][0-9]+[.][0-9]+ \(v[^)]+\)).*$/\1/p')
+  test -n "$agent_display_version"
+  agent_version=$(printf '%s\n' "$agent_display_version" | sed -E 's/^v([0-9]+[.][0-9]+[.][0-9]+).*/\1/')
   agent_commit=$(release_commit NousResearch/hermes-agent "$agent_tag")
   test -n "$agent_commit"
   {
     printf 'HERMES_AGENT_TAG=%s\n' "$agent_tag"
-    printf 'HERMES_AGENT_VERSION=%s\n' "${agent_tag#v}"
+    printf 'HERMES_AGENT_VERSION=%s\n' "$agent_version"
+    printf 'HERMES_AGENT_DISPLAY_VERSION=%q\n' "$agent_display_version"
     printf 'HERMES_AGENT_COMMIT=%s\n' "$agent_commit"
   } >> "${ROOT_DIR}/build/upstream.env"
 fi
@@ -65,8 +77,9 @@ if [ "$target" = studio ] || [ "$target" = both ]; then
   {
     printf 'HERMES_STUDIO_TAG=%s\n' "$studio_tag"
     printf 'HERMES_STUDIO_VERSION=%s\n' "$studio_version"
+    printf 'HERMES_STUDIO_DISPLAY_VERSION=%q\n' "v$studio_version"
     printf 'HERMES_STUDIO_COMMIT=%s\n' "$studio_commit"
-  } >> "$ROOT_DIR/build/upstream.env"
+  } >> "${ROOT_DIR}/build/upstream.env"
 fi
 
 echo "Resolved formal Release(s) for $target:"
