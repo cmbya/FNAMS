@@ -35,6 +35,9 @@ grep -q 'agent_built' "$ROOT_DIR/scripts/build-release.sh"
 grep -q 'unified_release_tags' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
 grep -q 'last_successful_upstream' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
 grep -q 'gh release download' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
+grep -q 'check-upstream-state.sh' "$ROOT_DIR/.github/workflows/build-release.yml"
+grep -q 'check-upstream-state.sh' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
+test -f "$ROOT_DIR/scripts/check-upstream-state.sh"
 (
   source "$ROOT_DIR/versions.lock"
   [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
