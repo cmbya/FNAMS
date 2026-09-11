@@ -3,9 +3,8 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT_DIR"
 
-requested_agent_version=${AGENT_PACKAGE_VERSION:-}
-requested_studio_version=${STUDIO_PACKAGE_VERSION:-}
 source versions.lock
+requested_package_version=${PACKAGE_VERSION_INPUT:-}
 
 BUILD_TARGET=${BUILD_TARGET:-agent}
 case "$BUILD_TARGET" in
@@ -22,26 +21,27 @@ validate_package_version() {
 }
 
 resolve_package_version() {
-  local target=$1
-  local requested=$2
-  local fallback=$3
+  local requested=$1
+  local fallback=$2
   if [ -n "$requested" ]; then
     validate_package_version "$requested"
     printf '%s\n' "$requested"
   else
-    bash "${ROOT_DIR}/scripts/next-package-version.sh" "$target" "$fallback"
+    bash "${ROOT_DIR}/scripts/next-package-version.sh" "$fallback"
   fi
 }
 
+package_version=$(resolve_package_version "$requested_package_version" "$PACKAGE_VERSION")
 agent_package_version=
 studio_package_version=
 if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
-  agent_package_version=$(resolve_package_version agent "$requested_agent_version" "$AGENT_PACKAGE_VERSION")
+  agent_package_version="$package_version"
 fi
 if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then
-  studio_package_version=$(resolve_package_version studio "$requested_studio_version" "$STUDIO_PACKAGE_VERSION")
+  studio_package_version="$package_version"
 fi
 
+export PACKAGE_VERSION="$package_version"
 export AGENT_PACKAGE_VERSION="$agent_package_version"
 export STUDIO_PACKAGE_VERSION="$studio_package_version"
 
@@ -68,55 +68,55 @@ fi
 sha256sum dist/*.fpk > dist/SHA256SUMS
 
 agent_upstream="$HERMES_AGENT_VERSION"
+agent_display="$HERMES_AGENT_DISPLAY_VERSION"
 studio_upstream="$HERMES_STUDIO_VERSION"
+studio_display="$HERMES_STUDIO_DISPLAY_VERSION"
 agent_tag="$HERMES_AGENT_TAG"
 studio_tag="$HERMES_STUDIO_TAG"
 if [ -f build/upstream.env ]; then
   . build/upstream.env
   agent_upstream="${HERMES_AGENT_VERSION:-$agent_upstream}"
+  agent_display="${HERMES_AGENT_DISPLAY_VERSION:-$agent_display}"
   studio_upstream="${HERMES_STUDIO_VERSION:-$studio_upstream}"
+  studio_display="${HERMES_STUDIO_DISPLAY_VERSION:-$studio_display}"
   agent_tag="${HERMES_AGENT_TAG:-$agent_tag}"
   studio_tag="${HERMES_STUDIO_TAG:-$studio_tag}"
 fi
 
 jq -n \
   --arg target "$BUILD_TARGET" \
-  --arg agent_package "$agent_package_version" \
-  --arg studio_package "$studio_package_version" \
+  --arg package "$package_version" \
   --arg agent_upstream "$agent_upstream" \
+  --arg agent_display "$agent_display" \
   --arg agent_tag "$agent_tag" \
   --arg studio_upstream "$studio_upstream" \
+  --arg studio_display "$studio_display" \
   --arg studio_tag "$studio_tag" \
   --arg contract "$INTEGRATION_CONTRACT_VERSION" \
   '{
     build_target: $target,
     architecture: "x86_64",
     fnos: "1.2",
+    package_version: $package,
     package_versions: {},
     upstream: {
-      agent: {version: $agent_upstream, tag: $agent_tag},
-      studio: {version: $studio_upstream, tag: $studio_tag}
+      agent: {version: $agent_upstream, display_version: $agent_display, tag: $agent_tag},
+      studio: {version: $studio_upstream, display_version: $studio_display, tag: $studio_tag}
     },
-    hermes_agent: {version: $agent_upstream, tag: $agent_tag},
-    hermes_studio: {version: $studio_upstream, tag: $studio_tag},
+    hermes_agent: {version: $agent_upstream, display_version: $agent_display, tag: $agent_tag},
+    hermes_studio: {version: $studio_upstream, display_version: $studio_display, tag: $studio_tag},
     integration_contract: $contract
   }
   | if ($target == "agent" or $target == "both")
-    then .package_versions.agent = $agent_package
+    then .package_versions.agent = $package
     else .
     end
   | if ($target == "studio" or $target == "both")
-    then .package_versions.studio = $studio_package
-    else .
-    end
-  | if $target == "agent"
-    then .package_version = $agent_package
-    elif $target == "studio"
-    then .package_version = $studio_package
+    then .package_versions.studio = $package
     else .
     end' > dist/build-manifest.json
 
-echo "Built $BUILD_TARGET package(s):"
+echo "Built $BUILD_TARGET package(s) with unified version $package_version:"
 if [ -n "$agent_package_version" ]; then echo "  Hermes Agent $agent_package_version"; fi
 if [ -n "$studio_package_version" ]; then echo "  Hermes Studio $studio_package_version"; fi
 ls -lh dist/
