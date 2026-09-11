@@ -24,7 +24,7 @@ on:
         default: ''
         type: string
       use_latest_releases:
-        description: 'Resolve the newest formal upstream Releases'
+        description: 'Compatibility option; upstream state is always checked and latest formal Releases are used'
         required: false
         default: false
         type: boolean
