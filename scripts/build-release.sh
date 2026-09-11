@@ -34,11 +34,15 @@ resolve_package_version() {
 package_version=$(resolve_package_version "$requested_package_version" "$PACKAGE_VERSION")
 agent_package_version=
 studio_package_version=
+agent_built=false
+studio_built=false
 if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
   agent_package_version="$package_version"
+  agent_built=true
 fi
 if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then
   studio_package_version="$package_version"
+  studio_built=true
 fi
 
 export PACKAGE_VERSION="$package_version"
@@ -93,6 +97,8 @@ jq -n \
   --arg studio_display "$studio_display" \
   --arg studio_tag "$studio_tag" \
   --arg contract "$INTEGRATION_CONTRACT_VERSION" \
+  --argjson agent_built "$agent_built" \
+  --argjson studio_built "$studio_built" \
   '{
     build_target: $target,
     architecture: "x86_64",
@@ -100,11 +106,11 @@ jq -n \
     package_version: $package,
     package_versions: {},
     upstream: {
-      agent: {version: $agent_upstream, display_version: $agent_display, tag: $agent_tag},
-      studio: {version: $studio_upstream, display_version: $studio_display, tag: $studio_tag}
+      agent: {version: $agent_upstream, display_version: $agent_display, tag: $agent_tag, built: $agent_built},
+      studio: {version: $studio_upstream, display_version: $studio_display, tag: $studio_tag, built: $studio_built}
     },
-    hermes_agent: {version: $agent_upstream, display_version: $agent_display, tag: $agent_tag},
-    hermes_studio: {version: $studio_upstream, display_version: $studio_display, tag: $studio_tag},
+    hermes_agent: {version: $agent_upstream, display_version: $agent_display, tag: $agent_tag, built: $agent_built},
+    hermes_studio: {version: $studio_upstream, display_version: $studio_display, tag: $studio_tag, built: $studio_built},
     integration_contract: $contract
   }
   | if ($target == "agent" or $target == "both")
