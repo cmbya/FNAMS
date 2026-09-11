@@ -18,13 +18,8 @@ on:
           - agent
           - studio
           - both
-      agent_version:
-        description: 'Agent FPK version (empty = next after latest agent-v release)'
-        required: false
-        default: ''
-        type: string
-      studio_version:
-        description: 'Studio FPK version (empty = next after latest studio-v release)'
+      package_version:
+        description: 'Unified FNAMS FPK version (empty = next after latest v<version> release)'
         required: false
         default: ''
         type: string
@@ -37,8 +32,8 @@ on:
 permissions:
   contents: write
 
-# Agent and Studio remain separate packages. This only serializes publication
-# so two independently triggered builds cannot race while updating versions.lock.
+# Agent and Studio remain separate FPKs, but every update event uses one
+# unified package version and one combined FNAMS Release.
 concurrency:
   group: hermes-fpk-publish
   cancel-in-progress: false
@@ -84,8 +79,7 @@ jobs:
       - name: Build selected FPK
         env:
           BUILD_TARGET: ${{ steps.target.outputs.target }}
-          AGENT_PACKAGE_VERSION: ${{ inputs.agent_version || '' }}
-          STUDIO_PACKAGE_VERSION: ${{ inputs.studio_version || '' }}
+          PACKAGE_VERSION_INPUT: ${{ inputs.package_version || '' }}
           USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
         run: ./scripts/build-release.sh
       - name: Upload build artifact
@@ -93,85 +87,75 @@ jobs:
         with:
           name: Hermes-${{ steps.target.outputs.target }}-fnOS-${{ github.sha }}
           path: dist/
-      - name: Create or update independent Releases
+      - name: Create or update unified Release
         env:
           BUILD_TARGET: ${{ steps.target.outputs.target }}
         run: |
           set -eu
           manifest=dist/build-manifest.json
-          agent_version=$(jq -r '.package_versions.agent // empty' "$manifest")
-          studio_version=$(jq -r '.package_versions.studio // empty' "$manifest")
-          agent_upstream_tag=$(jq -r '.upstream.agent.tag // .hermes_agent.tag // empty' "$manifest")
-          studio_upstream_tag=$(jq -r '.upstream.studio.tag // .hermes_studio.tag // empty' "$manifest")
+          package_version=$(jq -r '.package_version // empty' "$manifest")
+          agent_upstream_display=$(jq -r '.upstream.agent.display_version // .hermes_agent.display_version // .upstream.agent.tag // .hermes_agent.tag // empty' "$manifest")
+          studio_upstream_display=$(jq -r '.upstream.studio.display_version // .hermes_studio.display_version // .upstream.studio.tag // .hermes_studio.tag // empty' "$manifest")
+          test -n "$package_version"
+
+          release_tag="v$package_version"
+          case "$BUILD_TARGET" in
+            agent)
+              test -n "$agent_upstream_display"
+              release_title="Hermes Agent fnOS $package_version · upstream $agent_upstream_display"
+              release_notes="更新类型：Hermes Agent。统一 fnOS 版本：$package_version。上游版本：$agent_upstream_display。目标平台：fnOS 1.2 x86_64。"
+              ;;
+            studio)
+              test -n "$studio_upstream_display"
+              release_title="Hermes Studio fnOS $package_version · upstream $studio_upstream_display"
+              release_notes="更新类型：Hermes Studio。统一 fnOS 版本：$package_version。上游版本：$studio_upstream_display。目标平台：fnOS 1.2 x86_64。"
+              ;;
+            both)
+              test -n "$agent_upstream_display" -a -n "$studio_upstream_display"
+              release_title="Hermes Agent + Studio fnOS $package_version · upstream Agent $agent_upstream_display; Studio $studio_upstream_display"
+              release_notes="更新类型：Hermes Agent + Hermes Studio。统一 fnOS 版本：$package_version。上游版本：Agent $agent_upstream_display；Studio $studio_upstream_display。目标平台：fnOS 1.2 x86_64。"
+              ;;
+            *) echo "Unknown release target: $BUILD_TARGET" >&2; exit 2 ;;
+          esac
 
           ensure_release() {
-            tag=$1
-            title=$2
-            notes=$3
-            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
+            if ! gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release create "$release_tag" --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes"
             fi
           }
 
           upload_asset() {
-            tag=$1
-            asset=$2
+            asset=$1
             attempt=1
             while [ "$attempt" -le 5 ]; do
-              if gh release upload "$tag" "$asset" --clobber --repo "$GITHUB_REPOSITORY"; then
+              if gh release upload "$release_tag" "$asset" --clobber --repo "$GITHUB_REPOSITORY"; then
                 return 0
               fi
-              echo "Release asset upload failed: tag=$tag asset=$asset attempt=$attempt" >&2
+              echo "Release asset upload failed: tag=$release_tag asset=$asset attempt=$attempt" >&2
               sleep $((attempt * 5))
               attempt=$((attempt + 1))
             done
-            echo "Failed to upload release asset: tag=$tag asset=$asset" >&2
+            echo "Failed to upload release asset: tag=$release_tag asset=$asset" >&2
             return 1
           }
 
-          publish_release() {
-            target=$1
-            version=$2
-            upstream_tag=$3
-            case "$target" in
-              agent)
-                tag="agent-v${version}"
-                title="Hermes Agent fnOS ${version}"
-                notes="Hermes Agent 独立 FPK。目标平台：fnOS 1.2 x86_64。"
-                asset="dist/HermesAgent-${version}-fnOS-x86_64.fpk"
-                ;;
-              studio)
-                tag="studio-v${version}"
-                title="Hermes Studio fnOS ${version}"
-                notes="Hermes Studio 独立 FPK；需已安装 Hermes Agent。目标平台：fnOS 1.2 x86_64。"
-                asset="dist/HermesStudio-${version}-fnOS-x86_64.fpk"
-                ;;
-              *) echo "Unknown release target: $target" >&2; exit 2 ;;
-            esac
-            if [ -n "$upstream_tag" ]; then
-              title="${title} · upstream ${upstream_tag}"
-              notes="${notes} 上游正式 Release：${upstream_tag}。"
-            fi
-            test -s "$asset"
-            ensure_release "$tag" "$title" "$notes"
-            upload_asset "$tag" "$asset"
-            upload_asset "$tag" dist/SHA256SUMS
-            upload_asset "$tag" dist/build-manifest.json
-            upload_asset "$tag" dist/fpk-payload-check.log
-            # Also update the title when a release tag already exists. This
-            # keeps reruns and rebuilt packages in sync with the upstream tag.
-            gh release edit "$tag" --title "$title" --draft=false --repo "$GITHUB_REPOSITORY"
-          }
-
+          ensure_release
           if [ "$BUILD_TARGET" = "agent" ] || [ "$BUILD_TARGET" = "both" ]; then
-            publish_release agent "$agent_version" "$agent_upstream_tag"
+            agent_asset="dist/HermesAgent-$package_version-fnOS-x86_64.fpk"
+            test -s "$agent_asset"
+            upload_asset "$agent_asset"
           fi
           if [ "$BUILD_TARGET" = "studio" ] || [ "$BUILD_TARGET" = "both" ]; then
-            publish_release studio "$studio_version" "$studio_upstream_tag"
+            studio_asset="dist/HermesStudio-$package_version-fnOS-x86_64.fpk"
+            test -s "$studio_asset"
+            upload_asset "$studio_asset"
           fi
+          upload_asset dist/SHA256SUMS
+          upload_asset dist/build-manifest.json
+          upload_asset dist/fpk-payload-check.log
+          gh release edit "$release_tag" --title "$release_title" --notes "$release_notes" --draft=false --repo "$GITHUB_REPOSITORY"
 
-      - name: Persist independent version state
+      - name: Persist unified version state
         env:
           BUILD_TARGET: ${{ steps.target.outputs.target }}
         run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
-
