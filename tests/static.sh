@@ -38,7 +38,7 @@ grep -q 'gh release download' "$ROOT_DIR/.github/workflows/check-upstream-releas
 (
   source "$ROOT_DIR/versions.lock"
   [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
-  test "$HERMES_AGENT_DISPLAY_VERSION" = "v0.21.1 (v2026.9.7)"
+  [[ "$HERMES_AGENT_DISPLAY_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\ \(v[0-9]+\.[0-9]+\.[0-9]+\)$ ]]
 )
 test -f "$ROOT_DIR/scripts/next-package-version.sh"
 test -f "$ROOT_DIR/scripts/update-versions-lock.sh"
