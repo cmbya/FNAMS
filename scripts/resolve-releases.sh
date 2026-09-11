@@ -18,6 +18,23 @@ latest_tag() {
   printf '%s\n' "${candidates%%$'\n'*}"
 }
 
+
+# Studio tags may refer to Android/HStudio releases; resolve the actual Web UI asset version.
+latest_studio_release() {
+  local repository=$1
+  local candidates
+  candidates=$(gh api "repos/$repository/releases?per_page=100" --paginate \
+    --jq '
+      .[] |
+      select(.draft == false and .prerelease == false) |
+      . as $release |
+      .assets[]? |
+      select(.name | test("^hermes-web-ui-[0-9]+[.][0-9]+[.][0-9]+[.]tar[.]gz$")) |
+      [$release.tag_name, (.name | capture("^hermes-web-ui-(?<version>[0-9]+[.][0-9]+[.][0-9]+)[.]tar[.]gz$").version)] |
+      @tsv
+    ')
+  printf '%s\n' "$candidates" | sort -t$'\t' -k2,2V | tail -n1
+}
 release_commit() {
   local repository=$1
   local tag=$2
@@ -38,15 +55,18 @@ if [ "$target" = agent ] || [ "$target" = both ]; then
 fi
 
 if [ "$target" = studio ] || [ "$target" = both ]; then
-  studio_tag=$(latest_tag EKKOLearnAI/hermes-studio)
-  test -n "$studio_tag"
+  studio_release=$(latest_studio_release EKKOLearnAI/hermes-studio)
+  test -n "$studio_release"
+  studio_tag=$(printf '%s\n' "$studio_release" | cut -f1)
+  studio_version=$(printf '%s\n' "$studio_release" | cut -f2)
+  test -n "$studio_tag" -a -n "$studio_version"
   studio_commit=$(release_commit EKKOLearnAI/hermes-studio "$studio_tag")
   test -n "$studio_commit"
   {
     printf 'HERMES_STUDIO_TAG=%s\n' "$studio_tag"
-    printf 'HERMES_STUDIO_VERSION=%s\n' "${studio_tag#v}"
+    printf 'HERMES_STUDIO_VERSION=%s\n' "$studio_version"
     printf 'HERMES_STUDIO_COMMIT=%s\n' "$studio_commit"
-  } >> "${ROOT_DIR}/build/upstream.env"
+  } >> "$ROOT_DIR/build/upstream.env"
 fi
 
 echo "Resolved formal Release(s) for $target:"
