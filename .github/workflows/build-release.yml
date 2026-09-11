@@ -66,30 +66,55 @@ jobs:
           fi
           case "$target" in agent|studio|both) ;; *) echo "Invalid target: $target" >&2; exit 2 ;; esac
           echo "target=$target" >> "$GITHUB_OUTPUT"
+      - name: Check selected upstream state
+        id: upstream
+        env:
+          REQUESTED_TARGET: ${{ steps.target.outputs.target }}
+        run: |
+          set -eu
+          state=$(bash ./scripts/check-upstream-state.sh "$REQUESTED_TARGET")
+          eval "$state"
+          echo "Requested target: $requested_target"
+          echo "Agent: latest=$latest_agent compiled=$compiled_agent"
+          echo "Studio: latest=$latest_studio compiled=$compiled_studio"
+          echo "Effective target: $target"
+          echo "requested_target=$requested_target" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
+      - name: Skip unchanged upstream target
+        if: steps.upstream.outputs.should_build != 'true'
+        run: echo 'No newer formal upstream Release for the selected target; skipping build and release.'
       - name: Install build tools
+        if: steps.upstream.outputs.should_build == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y curl jq zstd patchelf imagemagick librsvg2-bin unzip xz-utils busybox-static
       - uses: actions/setup-python@v5
+        if: steps.upstream.outputs.should_build == 'true'
         with:
           python-version: '3.11'
       - uses: astral-sh/setup-uv@v6
+        if: steps.upstream.outputs.should_build == 'true'
       - name: Run static checks
+        if: steps.upstream.outputs.should_build == 'true'
         run: ./tests/static.sh
       - name: Build selected FPK
+        if: steps.upstream.outputs.should_build == 'true'
         env:
-          BUILD_TARGET: ${{ steps.target.outputs.target }}
+          BUILD_TARGET: ${{ steps.upstream.outputs.target }}
           PACKAGE_VERSION_INPUT: ${{ inputs.package_version || '' }}
-          USE_LATEST_RELEASES: ${{ inputs.use_latest_releases && '1' || '0' }}
+          USE_LATEST_RELEASES: '1'
         run: ./scripts/build-release.sh
       - name: Upload build artifact
+        if: steps.upstream.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: Hermes-${{ steps.target.outputs.target }}-fnOS-${{ github.sha }}
+          name: Hermes-${{ steps.upstream.outputs.target }}-fnOS-${{ github.sha }}
           path: dist/
       - name: Create or update unified Release
+        if: steps.upstream.outputs.should_build == 'true'
         env:
-          BUILD_TARGET: ${{ steps.target.outputs.target }}
+          BUILD_TARGET: ${{ steps.upstream.outputs.target }}
         run: |
           set -eu
           manifest=dist/build-manifest.json
@@ -156,6 +181,7 @@ jobs:
           gh release edit "$release_tag" --title "$release_title" --notes "$release_notes" --draft=false --repo "$GITHUB_REPOSITORY"
 
       - name: Persist unified version state
+        if: steps.upstream.outputs.should_build == 'true'
         env:
-          BUILD_TARGET: ${{ steps.target.outputs.target }}
+          BUILD_TARGET: ${{ steps.upstream.outputs.target }}
         run: bash ./scripts/update-versions-lock.sh "$BUILD_TARGET"
