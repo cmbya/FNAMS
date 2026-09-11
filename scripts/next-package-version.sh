@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Return the next fnOS package version for one independent application.
+# Return the next unified fnOS package version.
 # FNAMS intentionally rolls 0.1.9 to 0.2.0 instead of creating 0.1.10.
-target=${1:?target is required: agent or studio}
-fallback=${2:?fallback version is required}
-case "$target" in
-  agent|studio) ;;
-  *) echo "target must be agent or studio (got: $target)" >&2; exit 2 ;;
-esac
+fallback=${1:?fallback version is required}
 
 latest=""
 if command -v gh >/dev/null 2>&1; then
@@ -19,7 +14,6 @@ if command -v gh >/dev/null 2>&1; then
       2>/dev/null \
       | while IFS= read -r tag; do
           case "$tag" in
-            "${target}-v"*) printf '%s\n' "${tag#${target}-v}" ;;
             v*) printf '%s\n' "${tag#v}" ;;
           esac
         done \
@@ -31,7 +25,7 @@ fi
 
 current=${latest:-$fallback}
 if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Cannot determine current $target package version: $current" >&2
+  echo "Cannot determine current unified package version: $current" >&2
   exit 1
 fi
 
