@@ -37,7 +37,7 @@ grep -q 'last_successful_upstream' "$ROOT_DIR/.github/workflows/check-upstream-r
 grep -q 'gh release download' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
 (
   source "$ROOT_DIR/versions.lock"
-  test "$PACKAGE_VERSION" = "0.1.0"
+  [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
   test "$HERMES_AGENT_DISPLAY_VERSION" = "v0.21.1 (v2026.9.7)"
 )
 test -f "$ROOT_DIR/scripts/next-package-version.sh"
