@@ -31,6 +31,10 @@ grep -q 'gh release edit "$release_tag" --title "$release_title" --notes "$relea
 grep -q '10 2 \* \* \*' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
 grep -q 'target=both' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
 grep -q 'latest_studio_web_tag' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
+grep -q 'agent_built' "$ROOT_DIR/scripts/build-release.sh"
+grep -q 'unified_release_tags' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
+grep -q 'last_successful_upstream' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
+grep -q 'gh release download' "$ROOT_DIR/.github/workflows/check-upstream-release.yml"
 (
   source "$ROOT_DIR/versions.lock"
   test "$PACKAGE_VERSION" = "0.1.0"
