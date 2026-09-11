@@ -17,44 +17,51 @@ if [ -f build/upstream.env ]; then
   source build/upstream.env
 fi
 
-agent_package_version=$(jq -r '.package_versions.agent // empty' "$manifest")
-studio_package_version=$(jq -r '.package_versions.studio // empty' "$manifest")
-test "$target" = studio || test -n "$agent_package_version"
-test "$target" = agent || test -n "$studio_package_version"
+package_version=$(jq -r '.package_version // empty' "$manifest")
+test -n "$package_version"
+
+agent_upstream_version=$(jq -r '.upstream.agent.version // .hermes_agent.version // empty' "$manifest")
+agent_upstream_display=$(jq -r '.upstream.agent.display_version // .hermes_agent.display_version // empty' "$manifest")
+agent_upstream_tag=$(jq -r '.upstream.agent.tag // .hermes_agent.tag // empty' "$manifest")
+studio_upstream_version=$(jq -r '.upstream.studio.version // .hermes_studio.version // empty' "$manifest")
+studio_upstream_display=$(jq -r '.upstream.studio.display_version // .hermes_studio.display_version // empty' "$manifest")
+studio_upstream_tag=$(jq -r '.upstream.studio.tag // .hermes_studio.tag // empty' "$manifest")
 
 set_lock_value() {
   local key=$1
   local value=$2
+  local quoted_value
+  printf -v quoted_value "'%s'" "$value"
   if grep -q "^$key=" versions.lock; then
-    sed -E -i "s/^$key=.*/$key=$value/" versions.lock
+    sed -E -i "s|^$key=.*|$key=$quoted_value|" versions.lock
   else
-    printf '%s=%s\n' "$key" "$value" >> versions.lock
+    printf '%s=%s\n' "$key" "$quoted_value" >> versions.lock
   fi
 }
+
+set_lock_value PACKAGE_VERSION "$package_version"
 
 update_agent=0
 update_studio=0
 if [ "$target" = agent ] || [ "$target" = both ]; then
-  set_lock_value AGENT_PACKAGE_VERSION "$agent_package_version"
-  update_agent=1
-  if [ -n "${HERMES_AGENT_TAG:-}" ]; then
-    set_lock_value HERMES_AGENT_TAG "$HERMES_AGENT_TAG"
-    set_lock_value HERMES_AGENT_VERSION "${HERMES_AGENT_VERSION:-${HERMES_AGENT_TAG#v}}"
-    if [ -n "${HERMES_AGENT_COMMIT:-}" ]; then
-      set_lock_value HERMES_AGENT_COMMIT "$HERMES_AGENT_COMMIT"
-    fi
+  test -n "$agent_upstream_version" -a -n "$agent_upstream_display" -a -n "$agent_upstream_tag"
+  set_lock_value HERMES_AGENT_VERSION "$agent_upstream_version"
+  set_lock_value HERMES_AGENT_DISPLAY_VERSION "$agent_upstream_display"
+  set_lock_value HERMES_AGENT_TAG "$agent_upstream_tag"
+  if [ -n "${HERMES_AGENT_COMMIT:-}" ]; then
+    set_lock_value HERMES_AGENT_COMMIT "$HERMES_AGENT_COMMIT"
   fi
+  update_agent=1
 fi
 if [ "$target" = studio ] || [ "$target" = both ]; then
-  set_lock_value STUDIO_PACKAGE_VERSION "$studio_package_version"
-  update_studio=1
-  if [ -n "${HERMES_STUDIO_TAG:-}" ]; then
-    set_lock_value HERMES_STUDIO_TAG "$HERMES_STUDIO_TAG"
-    set_lock_value HERMES_STUDIO_VERSION "${HERMES_STUDIO_VERSION:-${HERMES_STUDIO_TAG#v}}"
-    if [ -n "${HERMES_STUDIO_COMMIT:-}" ]; then
-      set_lock_value HERMES_STUDIO_COMMIT "$HERMES_STUDIO_COMMIT"
-    fi
+  test -n "$studio_upstream_version" -a -n "$studio_upstream_display" -a -n "$studio_upstream_tag"
+  set_lock_value HERMES_STUDIO_VERSION "$studio_upstream_version"
+  set_lock_value HERMES_STUDIO_DISPLAY_VERSION "$studio_upstream_display"
+  set_lock_value HERMES_STUDIO_TAG "$studio_upstream_tag"
+  if [ -n "${HERMES_STUDIO_COMMIT:-}" ]; then
+    set_lock_value HERMES_STUDIO_COMMIT "$HERMES_STUDIO_COMMIT"
   fi
+  update_studio=1
 fi
 
 git add versions.lock
@@ -66,9 +73,9 @@ fi
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 if [ "$update_agent" = 1 ] && [ "$update_studio" = 1 ]; then
-  message="chore(release): record Agent and Studio versions"
+  message="chore(release): record unified Agent and Studio versions"
 else
-  message="chore(release): record ${target} version"
+  message="chore(release): record unified ${target} version"
 fi
 git commit -m "$message"
 git push origin HEAD:main
