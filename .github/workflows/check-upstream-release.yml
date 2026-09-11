@@ -49,20 +49,105 @@ jobs:
             printf '%s\n' "$candidates" | sort -t$'\t' -k2,2V | tail -n1 | cut -f1
           }
 
+          unified_release_tags() {
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+              --jq '
+                .[] |
+                select(.draft == false and .prerelease == false) |
+                select(.tag_name | test("^v[0-9]+[.][0-9]+[.][0-9]+$")) |
+                select((([.assets[]?.name] | index("build-manifest.json"))) != null) |
+                .tag_name
+              ' |
+              sort -V -r
+          }
+
+          last_successful_upstream() {
+            state_dir=$1
+            compiled_agent=
+            compiled_studio=
+            while IFS= read -r release_tag; do
+              [ -n "$release_tag" ] || continue
+              manifest_dir="$state_dir/$release_tag"
+              mkdir -p "$manifest_dir"
+              if ! gh release download "$release_tag" \
+                --repo "$GITHUB_REPOSITORY" \
+                --pattern build-manifest.json \
+                --dir "$manifest_dir" \
+                --clobber >/dev/null 2>&1; then
+                continue
+              fi
+
+              manifest="$manifest_dir/build-manifest.json"
+              [ -s "$manifest" ] || continue
+              if ! manifest_target=$(jq -r '.build_target // empty' "$manifest" 2>/dev/null); then
+                continue
+              fi
+              case "$manifest_target" in
+                agent|studio|both) ;;
+                *) continue ;;
+              esac
+              if ! jq -e '.package_version and .upstream' "$manifest" >/dev/null 2>&1; then
+                continue
+              fi
+
+              agent_was_built=$(jq -r '
+                if .upstream.agent.built == true
+                   or .build_target == "agent"
+                   or .build_target == "both"
+                then "1" else "0" end
+              ' "$manifest")
+              studio_was_built=$(jq -r '
+                if .upstream.studio.built == true
+                   or .build_target == "studio"
+                   or .build_target == "both"
+                then "1" else "0" end
+              ' "$manifest")
+
+              if [ "$agent_was_built" = 1 ] && [ -z "$compiled_agent" ]; then
+                compiled_agent=$(jq -r '.upstream.agent.tag // empty' "$manifest")
+              fi
+              if [ "$studio_was_built" = 1 ] && [ -z "$compiled_studio" ]; then
+                compiled_studio=$(jq -r '.upstream.studio.tag // empty' "$manifest")
+              fi
+              if [ -n "$compiled_agent" ] && [ -n "$compiled_studio" ]; then
+                break
+              fi
+            done <<EOF
+          $(unified_release_tags)
+          EOF
+            printf '%s\t%s\n' "$compiled_agent" "$compiled_studio"
+          }
+
+          state_dir=$(mktemp -d)
+          trap 'rm -rf "$state_dir"' EXIT
+          recorded_state=$(last_successful_upstream "$state_dir")
+          IFS=$'\t' read -r compiled_agent compiled_studio <<< "$recorded_state"
+
+          # During migration, there may not be a unified Release yet. In that
+          # case the old lock file is the last recorded successful build state.
+          if [ -z "$compiled_agent" ]; then
+            compiled_agent="$HERMES_AGENT_TAG"
+            echo "Using legacy Agent build state from versions.lock: $compiled_agent"
+          fi
+          if [ -z "$compiled_studio" ]; then
+            compiled_studio="$HERMES_STUDIO_TAG"
+            echo "Using legacy Studio build state from versions.lock: $compiled_studio"
+          fi
+
           latest_agent=$(latest_formal_tag NousResearch/hermes-agent)
           latest_studio=$(latest_studio_web_tag EKKOLearnAI/hermes-studio)
           test -n "$latest_agent" -a -n "$latest_studio"
 
           agent_changed=0
           studio_changed=0
-          if [ "$latest_agent" != "$HERMES_AGENT_TAG" ]; then
+          if [ "$latest_agent" != "$compiled_agent" ]; then
             agent_changed=1
-            echo "New Hermes Agent formal Release: $latest_agent"
+            echo "New Hermes Agent formal Release: $latest_agent (compiled: $compiled_agent)"
           fi
 
-          if [ "$latest_studio" != "$HERMES_STUDIO_TAG" ]; then
+          if [ "$latest_studio" != "$compiled_studio" ]; then
             studio_changed=1
-            echo "New Hermes Studio formal Release: $latest_studio"
+            echo "New Hermes Studio formal Release: $latest_studio (compiled: $compiled_studio)"
           fi
 
           target=
