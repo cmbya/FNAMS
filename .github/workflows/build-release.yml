@@ -28,6 +28,11 @@ on:
         required: false
         default: false
         type: boolean
+      force_build:
+        description: 'Build even when the selected upstream has not changed'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -70,10 +75,16 @@ jobs:
         id: upstream
         env:
           REQUESTED_TARGET: ${{ steps.target.outputs.target }}
+          FORCE_BUILD: ${{ inputs.force_build || false }}
         run: |
           set -eu
           state=$(bash ./scripts/check-upstream-state.sh "$REQUESTED_TARGET")
           eval "$state"
+          if [ "$FORCE_BUILD" = true ]; then
+            should_build=true
+            target=$REQUESTED_TARGET
+            echo 'Force build enabled; bypassing unchanged-upstream skip.'
+          fi
           echo "Requested target: $requested_target"
           echo "Agent: latest=$latest_agent compiled=$compiled_agent"
           echo "Studio: latest=$latest_studio compiled=$compiled_studio"
