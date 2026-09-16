@@ -61,6 +61,10 @@ grep -q 'HERMES_GATEWAY_LOCK_DIR' "$ROOT_DIR/apps/hermes-agent/cmd/common"
 grep -q 'XDG_STATE_HOME' "$ROOT_DIR/apps/hermes-agent/cmd/common"
 grep -q 'TERMINAL_CWD' "$ROOT_DIR/apps/hermes-agent/cmd/common"
 grep -q '^export HOME HERMES_HOME WORKSPACE_DIR$' "$ROOT_DIR/apps/hermes-agent/cmd/common"
+grep -q 'CODING_AGENT_HOME=' "$ROOT_DIR/apps/hermes-studio/cmd/common"
+grep -q 'NPM_CONFIG_PREFIX=' "$ROOT_DIR/apps/hermes-studio/cmd/common"
+grep -q 'NPM_CONFIG_CACHE=' "$ROOT_DIR/apps/hermes-studio/cmd/common"
+grep -q '${CODING_AGENT_NPM_PREFIX}/bin:${APP_ROOT}/runtime/node/bin' "$ROOT_DIR/apps/hermes-studio/cmd/common"
 grep -q -- '--no-same-owner' "$ROOT_DIR/scripts/fetch-upstream.sh"
 grep -q 'ensure_api_server_key' "$ROOT_DIR/apps/hermes-agent/cmd/configuration"
 grep -q "printf 'HOME='" "$ROOT_DIR/apps/hermes-agent/cmd/configuration"
@@ -83,4 +87,5 @@ test "$(PATH="$stub_bin:$PATH" GITHUB_REPOSITORY=invalid/invalid bash "$ROOT_DIR
 test "$(PATH="$stub_bin:$PATH" GITHUB_REPOSITORY=invalid/invalid bash "$ROOT_DIR/scripts/next-package-version.sh" 1.2.8)" = "1.2.9"
 
 bash "$ROOT_DIR/tests/runtime-config.sh"
+bash "$ROOT_DIR/tests/studio-coding-agent-env.sh"
 echo 'Static source checks passed.'

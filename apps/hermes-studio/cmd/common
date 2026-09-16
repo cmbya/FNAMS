@@ -213,7 +213,19 @@ export HERMES_WEB_UI_MANAGED_GATEWAY=0
 export HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART=1
 export HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=0
 export HERMES_INTERACTIVE=1
-export PATH=${APP_ROOT}/runtime/node/bin:${AGENT_APP_ROOT:-/nonexistent}/runtime/node/bin:/usr/local/bin:${PATH}
+
+# Studio's npm-managed coding agents need a real writable home and global npm
+# prefix. fnOS package accounts may report /home/hermesagent even though that
+# directory does not exist. Keep this state below Studio's existing persistent
+# Web UI home so Agent/Hermes data and the separately packaged DSH service are
+# left untouched.
+CODING_AGENT_HOME=${HERMES_CODING_AGENT_HOME:-${WEB_UI_HOME}/coding-agent-home}
+CODING_AGENT_NPM_PREFIX=${HERMES_CODING_AGENT_NPM_PREFIX:-${WEB_UI_HOME}/coding-agent-npm}
+CODING_AGENT_NPM_CACHE=${HERMES_CODING_AGENT_NPM_CACHE:-${WEB_UI_HOME}/npm-cache}
+export HOME=${CODING_AGENT_HOME}
+export NPM_CONFIG_PREFIX=${CODING_AGENT_NPM_PREFIX}
+export NPM_CONFIG_CACHE=${CODING_AGENT_NPM_CACHE}
+export PATH=${CODING_AGENT_NPM_PREFIX}/bin:${APP_ROOT}/runtime/node/bin:${AGENT_APP_ROOT:-/nonexistent}/runtime/node/bin:/usr/local/bin:${PATH}
 export NODE_ENV=production
 export BIND_HOST=${BIND_HOST:-0.0.0.0}
 export PORT=${HERMES_STUDIO_PORT:-8648}
@@ -265,7 +277,8 @@ configure_browser_backend() {
 
 configure_browser_backend
 
-if ! mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}" 2>/dev/null; then
+if ! mkdir -p "${LOG_DIR}" "${PKG_TMP}" "${WEB_UI_HOME}" \
+  "${CODING_AGENT_HOME}" "${CODING_AGENT_NPM_PREFIX}" "${CODING_AGENT_NPM_CACHE}" 2>/dev/null; then
   startup_log=${TRIM_TEMP_LOGFILE:-/tmp/HermesStudio-startup-error.log}
   printf '%s [Hermes Studio] ERROR: unable to initialize writable Studio runtime directories; original_pkgvar=%s runtime_root=%s agent_home=%s\n' \
     "$(date '+%Y-%m-%d %H:%M:%S%z')" "$ORIGINAL_PKG_VAR" "${STUDIO_RUNTIME_ROOT:-<appdata>}" "${AGENT_HOME:-<unresolved>}" >>"$startup_log" 2>/dev/null || true
@@ -286,4 +299,5 @@ log_runtime_identity() {
   fi
   log_msg "agent runtime: hermes_bin=${HERMES_BIN}; python_real=${HERMES_AGENT_BRIDGE_PYTHON_REAL:-<unresolved>}; cli_python=${HERMES_AGENT_CLI_PYTHON:-<unresolved>}; agent_root=${HERMES_AGENT_ROOT:-<unresolved>}; full_runtime=${HERMES_FNOS_RUNTIME_LOCKED:-0}; selection_locked=${HERMES_RUNTIME_SELECTION_LOCKED:-0}; desktop=${HERMES_DESKTOP:-0}"
   log_msg "browser backend=${BROWSER_BACKEND}; cdp=${BROWSER_CDP_URL:-<not-connected>}; fallback_chromium=${AGENT_BROWSER_EXECUTABLE_PATH:-<unresolved>}"
+  log_msg "coding agents: home=${CODING_AGENT_HOME}; npm_prefix=${CODING_AGENT_NPM_PREFIX}; npm_cache=${CODING_AGENT_NPM_CACHE}"
 }
