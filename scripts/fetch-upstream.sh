@@ -21,9 +21,21 @@ studio_archive="${SRC_DIR}/hermes-studio.tar.gz"
 agent_url="https://codeload.github.com/nousresearch/hermes-agent/tar.gz/refs/tags/${HERMES_AGENT_TAG}"
 studio_url="${STUDIO_ARCHIVE_URL:-https://github.com/EKKOLearnAI/hermes-studio/releases/download/${HERMES_STUDIO_TAG}/hermes-web-ui-${HERMES_STUDIO_VERSION}.tar.gz}"
 if [ "$BUILD_TARGET" = agent ] || [ "$BUILD_TARGET" = both ]; then
-  curl --fail --location --retry 3 --output "$agent_archive" "$agent_url"
-  mkdir -p "${SRC_DIR}/hermes-agent"
-  tar -xzf "$agent_archive" --no-same-owner --strip-components=1 -C "${SRC_DIR}/hermes-agent"
+  if curl --fail --location --retry 3 --output "$agent_archive" "$agent_url"; then
+    mkdir -p "${SRC_DIR}/hermes-agent"
+    tar -xzf "$agent_archive" --no-same-owner --strip-components=1 -C "${SRC_DIR}/hermes-agent"
+  else
+    echo "Agent source archive unavailable; cloning the formal release tag instead." >&2
+    rm -f "$agent_archive"
+    git -c advice.detachedHead=false clone --depth 1 --single-branch --branch "$HERMES_AGENT_TAG" \
+      https://github.com/NousResearch/hermes-agent.git "${SRC_DIR}/hermes-agent"
+    actual_commit=$(git -C "${SRC_DIR}/hermes-agent" rev-parse HEAD)
+    if [ "$actual_commit" != "$HERMES_AGENT_COMMIT" ]; then
+      echo "Agent release tag commit mismatch: expected $HERMES_AGENT_COMMIT, got $actual_commit" >&2
+      exit 1
+    fi
+    rm -rf "${SRC_DIR}/hermes-agent/.git"
+  fi
   test -f "${SRC_DIR}/hermes-agent/pyproject.toml"
 fi
 if [ "$BUILD_TARGET" = studio ] || [ "$BUILD_TARGET" = both ]; then

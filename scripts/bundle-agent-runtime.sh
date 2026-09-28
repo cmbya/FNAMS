@@ -27,7 +27,24 @@ test -x "$PY_ROOT/bin/python3"
 command -v uv >/dev/null 2>&1 || { echo 'uv is required on the build host.' >&2; exit 1; }
 cp "$(command -v uv)" "${OUT_DIR}/bin/uv"
 chmod 0755 "${OUT_DIR}/bin/uv"
-IFS=',' read -r -a extras <<< "$AGENT_EXTRAS"
+selected_extras=$(python3 - "$SRC_DIR/pyproject.toml" "$AGENT_EXTRAS" <<'PY'
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as project_file:
+    available = tomllib.load(project_file)["project"].get("optional-dependencies", {})
+
+requested = [extra.strip() for extra in sys.argv[2].split(",") if extra.strip()]
+selected = list(dict.fromkeys(extra for extra in requested if extra in available))
+missing = list(dict.fromkeys(extra for extra in requested if extra not in available))
+if missing:
+    print("Skipping extras absent from this upstream Agent release: " + ", ".join(missing), file=sys.stderr)
+if not selected:
+    sys.exit("No requested Agent extras are defined by this upstream release")
+print("\n".join(selected))
+PY
+)
+mapfile -t extras <<< "$selected_extras"
 extra_args=()
 for extra in "${extras[@]}"; do extra_args+=(--extra "$extra"); done
 uv export --locked --project "$SRC_DIR" --format requirements.txt --no-emit-project "${extra_args[@]}" --output-file "${WORK_DIR}/requirements.txt"
